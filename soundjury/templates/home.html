@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - SoundJury{% endblock %}
+
+{% block content %}
+<style>
+  .hero-section {
+    text-align: center;
+    padding: 3rem 2rem 2rem;
+    background: linear-gradient(135deg, var(--accent), #0066cc);
+    color: white;
+    margin-bottom: 3rem;
+  }
+  .hero-section h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+  .hero-section p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin-bottom: 2rem;
+  }
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .hero-buttons a {
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+  .btn-primary-hero {
+    background: white;
+    color: var(--accent);
+  }
+  .btn-secondary-hero {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid white;
+  }
+  .btn-primary-hero:hover, .btn-secondary-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .content-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .stat-item {
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label {
+    color: var(--fg);
+    opacity: 0.8;
+    font-size: 0.9rem;
+  }
+
+  .tracks-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .track-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+    cursor: pointer;
+    position: relative;
+  }
+  .track-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    background: var(--hover);
+  }
+
+  .track-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .track-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+  .track-info h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    color: var(--fg);
+  }
+  .track-artist {
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .track-rating {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .stars-display {
+    display: flex;
+    gap: 2px;
+  }
+  .star-display {
+    font-size: 1.1rem;
+    color: #ffd700;
+  }
+  .rating-text {
+    font-size: 0.9rem;
+    color: var(--accent);
+  }
+
+  .track-links {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .track-links a {
+    padding: 0.4rem 0.8rem;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    transition: all 0.3s;
+  }
+  .track-links a:hover {
+    opacity: 0.8;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .auth-cta {
+    background: linear-gradient(135deg, rgba(0,255,204,0.1), rgba(0,102,204,0.1));
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    margin: 3rem 0;
+    border: 1px solid var(--accent);
+  }
+  .auth-cta h3 {
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  .auth-cta p {
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+  }
+</style>
+
+<div class="hero-section">
+  <h1>🎧 Bienvenue sur SoundJury</h1>
+  {% if current_user.is_authenticated %}
+    <p>Salut {{ current_user.username }} ! Découvrez les morceaux tendance et partagez vos goûts musicaux</p>
+  {% else %}
+    <p>La plateforme où votre avis musical compte vraiment</p>
+  {% endif %}
+  
+  <div class="hero-buttons">
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('search') }}" class="btn-primary-hero">🔍 Rechercher & Noter</a>
+      <a href="{{ url_for('top_rated') }}" class="btn-secondary-hero">🏆 Top des Notes</a>
+    {% else %}
+      <a href="{{ url_for('register') }}" class="btn-primary-hero">🎵 Rejoindre la communauté</a>
+      <a href="{{ url_for('search') }}" class="btn-secondary-hero">🔍 Découvrir les morceaux</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="content-section">
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-number" id="total-tracks">{{ tracks|length }}</span>
+      <span class="stat-label">Morceaux Tendance</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" id="total-ratings">--</span>
+      <span class="stat-label">Notes Données</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-number" id="avg-rating">--</span>
+      <span class="stat-label">Note Moyenne</span>
+    </div>
+  </div>
+
+  {% if not current_user.is_authenticated %}
+  <div class="auth-cta">
+    <h3>🎵 Participez à la communauté musicale</h3>
+    <p>Créez un compte pour noter vos morceaux préférés et influencer le classement communautaire</p>
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+      <a href="{{ url_for('register') }}" class="btn btn-primary">S'inscrire gratuitement</a>
+      <a href="{{ url_for('login') }}" style="color: var(--accent); text-decoration: none; padding: 0.8rem 1.5rem;">Déjà membre ? Se connecter</a>
+    </div>
+  </div>
+  {% elif not current_user.is_verified %}
+  <div style="background: rgba(255,152,0,0.1); padding: 1.5rem; border-radius: 8px; text-align: center; margin-bottom: 2rem; border: 1px solid #ff9800;">
+    <h3 style="color: #ff9800; margin-bottom: 0.5rem;">⚠️ Vérification email requise</h3>
+    <p style="margin: 0;">Consultez votre boîte mail pour activer votre compte et commencer à noter !</p>
+  </div>
+  {% endif %}
+
+  <h2 class="section-title">🔥 Morceaux Tendance</h2>
+  
+  <div class="tracks-grid">
+    {% for track in tracks %}
+    <div class="track-card" 
+         data-artist="{{ track.artist }}" 
+         data-title="{{ track.title }}" 
+         data-artist-id="{{ track.artist_id or '' }}"
+         data-index="{{ loop.index }}">
+      
+      <div class="track-header">
+        <img src="{{ track.image }}" alt="Pochette de {{ track.title }}" class="track-image">
+        <div class="track-info">
+          <h3>{{ track.title }}</h3>
+          <p class="track-artist">{{ track.artist }}</p>
+        </div>
+      </div>
+
+      {% if current_user.is_authenticated and current_user.is_verified %}
+      <div class="track-rating">
+        <div class="stars" data-artist="{{ track.artist }}" data-title="{{ track.title }}">
+          <span class="star" data-rating="1">★</span>
+          <span class="star" data-rating="2">★</span>
+          <span class="star" data-rating="3">★</span>
+          <span class="star" data-rating="4">★</span>
+          <span class="star" data-rating="5">★</span>
+        </div>
+        <span class="rating-info" id="rating-info-{{ loop.index }}">Cliquez pour noter</span>
+      </div>
+      {% endif %}
+
+      <div class="track-links">
+        {% if track.spotify_url %}<a href="{{ track.spotify_url }}" target="_blank">🎵 Spotify</a>{% endif %}
+        {% if track.youtube_url %}<a href="{{ track.youtube_url }}" target="_blank">📺 YouTube</a>{% endif %}
+        {% if track.deezer_url %}<a href="{{ track.deezer_url }}" target="_blank">🎧 Deezer</a>{% endif %}
+      </div>
+
+      <div class="details" id="details-{{ loop.index }}">
+        <div class="extra">Cliquez pour plus d'infos...</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not tracks %}
+  <div style="text-align: center; padding: 3rem; color: var(--fg); opacity: 0.7;">
+    <h3>🎵 Aucun morceau tendance pour le moment</h3>
+    <p>Commencez par rechercher et noter des morceaux !</p>
+    <a href="{{ url_for('search') }}" class="btn btn-primary">Rechercher des morceaux</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+// Charger les statistiques
+fetch('/stats')
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('total-ratings').textContent = data.total_ratings || 0;
+    const avgRating = data.total_ratings > 0 ? 
+      (data.top_tracks.reduce((sum, track) => sum + (track.average || 0), 0) / Math.min(5, data.top_tracks.length)).toFixed(1) : 
+      '0.0';
+    document.getElementById('avg-rating').textContent = avgRating + '/5';
+  })
+  .catch(() => {
+    document.getElementById('total-ratings').textContent = '0';
+    document.getElementById('avg-rating').textContent = '0.0/5';
+  });
+
+// Réutiliser les fonctions de notation de index.html
+const loaded = {};
+
+function loadDetails(index, artist, title, artist_id) {
+  const detailsDiv = document.getElementById('details-' + index);
+  const contentDiv = detailsDiv.querySelector('.extra');
+
+  if (detailsDiv.classList.contains("show")) {
+    detailsDiv.classList.remove("show");
+    detailsDiv.style.display = "none";
+    return;
+  }
+
+  if (loaded[index]) {
+    detailsDiv.style.display = "block";
+    detailsDiv.classList.add("show");
+    return;
+  }
+
+  contentDiv.innerHTML = "Chargement...";
+  detailsDiv.style.display = "block";
+  detailsDiv.classList.add("show");
+
+  fetch("/details", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ artist, title, artist_id })
+  })
+  .then(res => res.json())
+  .then(data => {
+    let html = "";
+    if (data.genres && data.genres.length)
+      html += `<p><strong>Genres :</strong> ${data.genres.join(', ')}</p>`;
+    if (data.duration)
+      html += `<p><strong>Durée :</strong> ${Math.floor(data.duration / 60)} min ${data.duration % 60} s</p>`;
+    if (data.release_date)
+      html += `<p><strong>Sortie :</strong> ${data.release_date}</p>`;
+    if (data.preview_url)
+      html += `<audio controls src="${data.preview_url}" style="width: 100%; margin-top: 0.5rem;"></audio>`;
+    
+    contentDiv.innerHTML = html || "Aucune information supplémentaire.";
+    loaded[index] = true;
+    
+    updateRatingDisplay(index, data);
+  })
+  .catch(err => {
+    contentDiv.innerHTML = "Erreur lors du chargement.";
+    console.error("Erreur AJAX :", err);
+  });
+}
+
+// Système de notation (copié et adapté depuis index.html)
+{% if current_user.is_authenticated and current_user.is_verified %}
+function setupRatingSystem() {
+  document.querySelectorAll('.stars').forEach(starsContainer => {
+    const stars = starsContainer.querySelectorAll('.star');
+    const artist = starsContainer.dataset.artist;
+    const title = starsContainer.dataset.title;
+    
+    stars.forEach((star, index) => {
+      star.addEventListener('mouseenter', () => {
+        highlightStars(stars, index + 1);
+      });
+      star.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rating = index + 1;
+        submitRating(artist, title, rating, starsContainer);
+      });
+    });
+    
+    starsContainer.addEventListener('mouseleave', () => {
+      resetStarHighlight(stars);
+    });
+  });
+}
+
+function highlightStars(stars, rating) {
+  stars.forEach((star, index) => {
+    star.style.color = index < rating ? '#ffd700' : '#ccc';
+  });
+}
+
+function resetStarHighlight(stars) {
+  stars.forEach(star => {
+    star.style.color = star.classList.contains('filled') ? '#ffd700' : '#ccc';
+  });
+}
+
+function submitRating(artist, title, rating, starsContainer) {
+  fetch('/rate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ artist, title, rating })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      updateStarDisplay(starsContainer, data.average);
+      updateRatingInfo(starsContainer, data.average, data.count);
+      
+      const stars = starsContainer.querySelectorAll('.star');
+      stars.forEach(star => {
+        star.style.cursor = 'not-allowed';
+        star.style.opacity = '0.7';
+      });
+    } else {
+      alert('Erreur : ' + data.error);
+    }
+  })
+  .catch(e => {
+    console.error('Erreur notation:', e);
+    alert('Erreur de connexion');
+  });
+}
+
+function updateStarDisplay(starsContainer, average) {
+  const stars = starsContainer.querySelectorAll('.star');
+  stars.forEach((star, index) => {
+    if (index < Math.round(average)) {
+      star.classList.add('filled');
+      star.style.color = '#ffd700';
+    } else {
+      star.classList.remove('filled');
+      star.style.color = '#ccc';
+    }
+  });
+}
+
+function updateRatingInfo(starsContainer, average, count) {
+  const trackElement = starsContainer.closest('.track-card');
+  const index = trackElement.dataset.index;
+  const ratingInfo = document.getElementById(`rating-info-${index}`);
+  if (ratingInfo) {
+    ratingInfo.textContent = `${average}/5 (${count} vote${count > 1 ? 's' : ''})`;
+  }
+}
+
+function updateRatingDisplay(trackIndex, data) {
+  if (data.average && data.count) {
+    const track = document.querySelector(`[data-index="${trackIndex}"]`);
+    const starsContainer = track.querySelector('.stars');
+    if (starsContainer) {
+      updateStarDisplay(starsContainer, data.average);
+      updateRatingInfo(starsContainer, data.average, data.count);
+      
+      if (data.user_has_rated) {
+        const stars = starsContainer.querySelectorAll('.star');
+        stars.forEach(star => {
+          star.style.cursor = 'not-allowed';
+          star.style.opacity = '0.7';
+        });
+      }
+    }
+  }
+}
+
+// Initialiser le système
+document.addEventListener('DOMContentLoaded', setupRatingSystem);
+{% endif %}
+
+// Gestion des clics sur les cards
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.track-card').forEach((card) => {
+    card.addEventListener('click', (event) => {
+      if (event.target.tagName.toLowerCase() === 'a' || event.target.classList.contains('star')) return;
+      const artist = card.dataset.artist;
+      const title = card.dataset.title;
+      const artist_id = card.dataset.artistId;
+      const index = card.dataset.index;
+      loadDetails(index, artist, title, artist_id);
+    });
+  });
+});
+</script>
+{% endblock %}

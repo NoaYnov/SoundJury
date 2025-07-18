@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - SoundJury{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 style="text-align: center; color: var(--accent); margin-bottom: 2rem;">🎧 Connexion</h2>
+    
+    <form method="POST" class="auth-form">
+        <div class="form-group">
+            <label for="email">Adresse email</label>
+            <input type="email" id="email" name="email" required 
+                   placeholder="votre@email.com" value="{{ request.form.email or '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" name="password" required 
+                   placeholder="••••••••">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Se connecter</button>
+    </form>
+    
+    <div class="auth-links">
+        <p>Pas encore de compte ? <a href="{{ url_for('register') }}">S'inscrire</a></p>
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,255,204,0.1); border-radius: 8px; font-size: 0.9rem;">
+        <h4 style="margin: 0 0 0.5rem; color: var(--accent);">🎵 Pourquoi créer un compte ?</h4>
+        <ul style="margin: 0; padding-left: 1.5rem;">
+            <li>Noter vos morceaux préférés</li>
+            <li>Une seule note par personne par morceau</li>
+            <li>Voir vos notes précédentes</li>
+            <li>Participer au classement communautaire</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

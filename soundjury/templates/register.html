@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription - SoundJury{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 style="text-align: center; color: var(--accent); margin-bottom: 2rem;">🎧 Créer un compte</h2>
+    
+    <form method="POST" class="auth-form">
+        <div class="form-group">
+            <label for="username">Nom d'utilisateur (optionnel)</label>
+            <input type="text" id="username" name="username" 
+                   placeholder="Comment vous appeler ?" value="{{ request.form.username or '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Adresse email *</label>
+            <input type="email" id="email" name="email" required 
+                   placeholder="votre@email.com" value="{{ request.form.email or '' }}">
+            <small style="color: var(--accent); opacity: 0.8;">
+                ℹ️ Nécessaire pour vérifier votre compte et éviter les abus
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Mot de passe *</label>
+            <input type="password" id="password" name="password" required 
+                   placeholder="Au moins 6 caractères" minlength="6">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Créer mon compte</button>
+    </form>
+    
+    <div class="auth-links">
+        <p>Déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a></p>
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,255,204,0.1); border-radius: 8px; font-size: 0.9rem;">
+        <h4 style="margin: 0 0 0.5rem; color: var(--accent);">📧 Processus d'inscription</h4>
+        <ol style="margin: 0; padding-left: 1.5rem;">
+            <li>Créez votre compte</li>
+            <li>Vérifiez votre email (lien envoyé automatiquement)</li>
+            <li>Commencez à noter vos morceaux préférés !</li>
+        </ol>
+        <p style="margin: 1rem 0 0; font-size: 0.8rem; opacity: 0.8;">
+            🔒 Vos données sont protégées et ne seront jamais partagées.
+        </p>
+    </div>
+    
+    <div style="margin-top: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; font-size: 0.85rem;">
+        <h4 style="margin: 0 0 0.5rem; color: #ff6b35;">⚠️ Configuration email requise</h4>
+        <p style="margin: 0;">
+            Pour que les emails de vérification fonctionnent, l'administrateur doit configurer les paramètres SMTP. 
+            En attendant, les comptes peuvent être créés mais la vérification email ne sera pas automatique.
+        </p>
+    </div>
+</div>
+
+<script>
+// Validation côté client
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    
+    if (password.length < 6) {
+        e.preventDefault();
+        alert('Le mot de passe doit faire au moins 6 caractères');
+        return;
+    }
+    
+    if (!email.includes('@') || !email.includes('.')) {
+        e.preventDefault();
+        alert('Veuillez entrer une adresse email valide');
+        return;
+    }
+});
+</script>
+{% endblock %}

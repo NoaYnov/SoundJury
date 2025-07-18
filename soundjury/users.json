@@ -1,0 +1,9 @@
+{
+  "mistersquare7@gmail.com": {
+    "email": "mistersquare7@gmail.com",
+    "password_hash": "scrypt:32768:8:1$SEDU7Tl7DgLjpePm$707f2c633fe0b893a784689f5766ff8c4b376f5c59d7370bc943a8dd42716a75f299ff9010a590ba21f51c82e2c6a85d7ebb25d7383092011ed6a53b2dfd3735",
+    "is_verified": true,
+    "username": "Msquare7",
+    "created_at": "2025-07-18T01:36:50.250505"
+  }
+}

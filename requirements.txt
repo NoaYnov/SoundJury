@@ -1,0 +1,19 @@
+flask>=2.0.0
+spotipy>=2.22.0
+requests>=2.28.0
+
+# Authentification et sécurité
+flask-login>=0.6.0       # Gestion des sessions utilisateur
+flask-mail>=0.9.1        # Envoi d'emails
+werkzeug>=2.0.0          # Hashage des mots de passe
+itsdangerous>=2.0.0      # Tokens sécurisés
+email-validator>=1.3.0   # Validation des emails
+
+# Bases de données optionnelles (choisir selon vos besoins)
+supabase>=1.0.0          # Pour Supabase (PostgreSQL)
+pymongo>=4.0.0           # Pour MongoDB Atlas
+mysql-connector-python>=8.0.0  # Pour PlanetScale (MySQL)
+firebase-admin>=6.0.0    # Pour Firebase Firestore
+
+# Utilitaires
+python-dotenv>=0.19.0    # Pour charger les variables d'environnement depuis .env

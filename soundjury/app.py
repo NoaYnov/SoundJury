@@ -1,211 +1,360 @@
+"""
+SoundJury - Application principale
+Architecture professionnelle avec classes et services
+"""
+import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from music_api import get_fast_tracks, get_full_track_data, get_trending_tracks
-from ratings import add_rating, get_rating, get_top_rated_tracks, has_user_rated, get_user_rating, get_user_rated_tracks
-from auth import user_manager, EmailVerification
-from email_service import email_service
-import os
-import secrets
+from dotenv import load_dotenv
 
-app = Flask(__name__)
+# Charger les variables d'environnement depuis le fichier .env du dossier parent
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path)
 
-# Configuration de sécurité
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', secrets.token_hex(16))
+# Configuration
+from config import config
 
-# Configuration Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = 'Vous devez vous connecter pour accéder à cette page.'
-login_manager.login_message_category = 'info'
+# Modèles
+from models.user import User
+from models.track import Track, TrackDetails
+from models.rating import RatingManager
 
-# Configuration email
-email_service.init_app(app)
+# Services
+from services.auth_service import AuthService
+from services.deezer_service import DeezerMusicService
+from services.supabase_service import SupabaseService
 
-# Initialisation du vérificateur d'email
-email_verifier = EmailVerification(app.config['SECRET_KEY'])
+# Utilitaires
+from utils import EmailService
 
-@login_manager.user_loader
-def load_user(user_email):
-    return user_manager.get_user(user_email)
-
-@app.route("/")
-def home():
-    top_tracks = get_trending_tracks(limit=5)  # à implémenter dans music_api.py
-    return render_template("home.html", tracks=top_tracks)
-
-@app.route("/search", methods=["GET", "POST"])
-def search():
-    query = ""
-    tracks = []
-    if request.method == "POST":
-        query = request.form.get("query")
-        if query:
-            tracks = get_fast_tracks(query)
-    return render_template("index.html", query=query, tracks=tracks)
-
-@app.route("/details", methods=["POST"])
-def details():
-    try:
-        data = request.get_json()
-        artist = data.get("artist")
-        title = data.get("title")
-        artist_id = data.get("artist_id")
-
-        result = get_full_track_data(artist, title, artist_id)
+class SoundJuryApp:
+    """Application principale SoundJury"""
+    
+    def __init__(self, config_name='default'):
+        self.app = Flask(__name__)
+        self.config = config[config_name]
+        self.config.init_app(self.app)
         
-        # Ajouter les informations de rating
-        rating_info = get_rating(artist, title)
-        result.update(rating_info)
+        # Initialiser les services
+        self.supabase_service = SupabaseService()
+        self.auth_service = AuthService(self.config)
+        self.music_service = DeezerMusicService()
+        # Remplacer RatingManager par le service Supabase
+        # self.rating_manager = RatingManager(self.config.RATINGS_FILE)
         
-        # Ajouter si l'utilisateur a déjà voté
-        if current_user.is_authenticated:
-            result['user_has_rated'] = has_user_rated(artist, title, current_user.email)
-            result['user_rating'] = get_user_rating(artist, title, current_user.email)
-        else:
-            result['user_has_rated'] = False
-            result['user_rating'] = None
+        # Configurer Flask-Login
+        self.login_manager = LoginManager()
+        self.login_manager.init_app(self.app)
+        self.login_manager.login_view = 'login'
+        self.login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
         
-        return jsonify(result)
-
-    except Exception as e:
-        print("Erreur backend /details :", e)  # très important pour debug
-        return jsonify({"error": "internal error", "message": str(e)}), 500
-
-@app.route("/rate", methods=["POST"])
-@login_required
-def rate_track():
-    try:
-        if not current_user.is_verified:
-            return jsonify({"error": "Vous devez vérifier votre email pour noter des morceaux"}), 403
+        # Configurer les routes
+        self._setup_routes()
+        self._setup_login_manager()
+    
+    def _setup_login_manager(self):
+        """Configure Flask-Login"""
+        @self.login_manager.user_loader
+        def load_user(user_email):
+            return self.auth_service.get_user(user_email)
+    
+    def _setup_routes(self):
+        """Configure toutes les routes de l'application"""
         
-        data = request.get_json()
-        artist = data.get("artist")
-        title = data.get("title")
-        rating = data.get("rating")
-        
-        if not artist or not title or rating is None:
-            return jsonify({"error": "Données manquantes"}), 400
-        
-        success, error_msg = add_rating(artist, title, int(rating), current_user.email)
-        if success:
-            rating_info = get_rating(artist, title)
-            return jsonify({
-                "success": True,
-                "average": rating_info["average"],
-                "count": rating_info["count"],
-                "message": error_msg  # error_msg contient maintenant le message de succès
-            })
-        else:
-            return jsonify({"error": error_msg}), 400
+        @self.app.route("/")
+        def home():
+            """Page d'accueil avec morceaux tendance"""
+            tracks = self.music_service.get_trending_tracks(limit=10)
+            stats = self.supabase_service.get_global_stats()
             
-    except Exception as e:
-        print("Erreur backend /rate :", e)
-        return jsonify({"error": "internal error", "message": str(e)}), 500
-
-# Routes d'authentification
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        username = request.form.get("username", "").strip()
+            # Ajouter les informations de notation aux morceaux
+            tracks_with_ratings = []
+            for track in tracks:
+                # Enrichir le track avec les données de notation
+                rating_info = self.supabase_service.get_track_stats(track.artist, track.title)
+                if rating_info:
+                    track.avg_rating = rating_info.get('average_rating', 0)
+                    track.rating_count = rating_info.get('total_ratings', 0)
+                else:
+                    track.avg_rating = 0
+                    track.rating_count = 0
+                
+                # Ajouter la note de l'utilisateur actuel si connecté
+                if current_user.is_authenticated:
+                    user_rating = self.supabase_service.get_user_rating(
+                        current_user.email, track.artist, track.title
+                    )
+                    track.user_rating = user_rating if user_rating else 0
+                else:
+                    track.user_rating = 0
+                
+                tracks_with_ratings.append(track)
+            
+            return render_template("home.html", tracks=tracks_with_ratings, stats=stats)
         
-        # Validation basique
-        if not email or not password:
-            flash("Email et mot de passe requis", "error")
+        @self.app.route("/search", methods=["GET", "POST"])
+        def search():
+            """Page de recherche"""
+            query = ""
+            tracks = []
+            
+            if request.method == "POST":
+                query = request.form.get("query", "").strip()
+                if query:
+                    search_results = self.music_service.search_tracks(query, limit=20)
+                    
+                    # Ajouter les informations de notation
+                    for track in search_results:
+                        rating_info = self.supabase_service.get_track_stats(track.artist, track.title)
+                        if rating_info:
+                            track.avg_rating = rating_info.get('average_rating', 0)
+                            track.rating_count = rating_info.get('total_ratings', 0)
+                        tracks.append(track)
+            
+            return render_template("index.html", query=query, tracks=tracks)
+        
+        @self.app.route("/details", methods=["POST"])
+        def details():
+            """API pour récupérer les détails d'un morceau"""
+            try:
+                data = request.get_json()
+                artist = data.get("artist")
+                title = data.get("title")
+                artist_id = data.get("artist_id")
+                
+                if not artist or not title:
+                    return jsonify({"error": "Artiste et titre requis"}), 400
+                
+                # Récupérer les détails du morceau
+                track_details = self.music_service.get_track_details(artist, title, artist_id)
+                
+                # Ajouter les informations de notation
+                rating_info = self.supabase_service.get_track_stats(artist, title)
+                if rating_info:
+                    track_details['average'] = rating_info.get('average_rating', 0)
+                    track_details['count'] = rating_info.get('total_ratings', 0)
+                
+                # Ajouter la note de l'utilisateur si connecté
+                if current_user.is_authenticated:
+                    user_rating = self.supabase_service.get_user_rating(current_user.email, artist, title)
+                    if user_rating:
+                        track_details['user_rating'] = user_rating
+                        track_details['user_has_rated'] = True
+                
+                return jsonify(track_details)
+                
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+        
+        @self.app.route("/rate", methods=["POST"])
+        @login_required
+        def rate():
+            """API pour noter un morceau"""
+            try:
+                if not current_user.is_verified:
+                    return jsonify({"success": False, "error": "Compte non vérifié"}), 403
+                
+                data = request.get_json()
+                artist = data.get("artist")
+                title = data.get("title")
+                rating = data.get("rating")
+                
+                if not all([artist, title, rating]):
+                    return jsonify({"success": False, "error": "Données manquantes"}), 400
+                
+                # Créer ou mettre à jour la piste dans Supabase
+                track_data = {
+                    'artist': artist,
+                    'title': title,
+                    'deezer_id': data.get('deezer_id'),
+                    'preview_url': data.get('preview_url'),
+                    'album': data.get('album'),
+                    'duration': data.get('duration'),
+                    'cover_url': data.get('cover_url')
+                }
+                
+                try:
+                    # Ajouter la piste si elle n'existe pas
+                    track_id = self.supabase_service.create_track(track_data)
+                    
+                    # Ajouter la notation
+                    success = self.supabase_service.add_rating(
+                        current_user.email, track_id, int(rating)
+                    )
+                    
+                    if success:
+                        # Récupérer les nouvelles statistiques
+                        rating_info = self.supabase_service.get_track_stats(artist, title)
+                        return jsonify({
+                            "success": True,
+                            "message": "Notation ajoutée avec succès",
+                            "avg_rating": rating_info.get('average_rating', 0),
+                            "count": rating_info.get('total_ratings', 0)
+                        })
+                    else:
+                        return jsonify({"success": False, "error": "Erreur lors de l'ajout de la notation"}), 500
+                        
+                except Exception as e:
+                    return jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500
+                    
+            except Exception as e:
+                return jsonify({"success": False, "error": str(e)}), 500
+        
+        @self.app.route("/register", methods=["GET", "POST"])
+        def register():
+            """Page d'inscription"""
+            if request.method == "POST":
+                email = request.form.get("email", "").strip()
+                username = request.form.get("username", "").strip()
+                password = request.form.get("password", "").strip()
+                
+                if not all([email, username, password]):
+                    flash("Tous les champs sont requis", "error")
+                    return render_template("register.html")
+                
+                success, message = self.auth_service.register_user(email, username, password)
+                
+                if success:
+                    flash(message, "success")
+                    return redirect(url_for("login"))
+                else:
+                    flash(message, "error")
+            
             return render_template("register.html")
         
-        if len(password) < 6:
-            flash("Le mot de passe doit faire au moins 6 caractères", "error")
-            return render_template("register.html")
+        @self.app.route("/login", methods=["GET", "POST"])
+        def login():
+            """Page de connexion"""
+            if request.method == "POST":
+                email = request.form.get("email", "").strip()
+                password = request.form.get("password", "").strip()
+                
+                if not email or not password:
+                    flash("Email et mot de passe requis", "error")
+                    return render_template("login.html")
+                
+                success, message, user = self.auth_service.login_user(email, password)
+                
+                if success:
+                    login_user(user, remember=True)
+                    flash(message, "success")
+                    return redirect(url_for("home"))
+                else:
+                    flash(message, "error")
+            
+            return render_template("login.html")
         
-        # Créer l'utilisateur
-        user, error = user_manager.create_user(email, password, username)
+        @self.app.route("/logout")
+        @login_required
+        def logout():
+            """Déconnexion"""
+            logout_user()
+            flash("Déconnexion réussie", "success")
+            return redirect(url_for("home"))
         
-        if error:
-            flash(error, "error")
-            return render_template("register.html")
+        @self.app.route("/verify")
+        def verify():
+            """Vérification d'email"""
+            email = request.args.get("email")
+            token = request.args.get("token")
+            
+            if not email or not token:
+                flash("Lien de vérification invalide", "error")
+                return redirect(url_for("home"))
+            
+            success, message = self.auth_service.verify_user_email(email, token)
+            
+            if success:
+                flash(message, "success")
+                return redirect(url_for("login"))
+            else:
+                flash(message, "error")
+                return redirect(url_for("home"))
         
-        # Générer le token de vérification
-        token = email_verifier.generate_token(email)
-        verification_url = url_for('verify_email', token=token, _external=True)
+        @self.app.route("/top-rated")
+        def top_rated():
+            """Page des morceaux les mieux notés"""
+            tracks = self.supabase_service.get_top_rated_tracks(limit=20)
+            return render_template("top_rated.html", tracks=tracks)
         
-        # Envoyer l'email de vérification
-        if email_service.send_verification_email(email, verification_url, username):
-            flash("Compte créé ! Vérifiez votre email pour l'activer.", "success")
-        else:
-            flash("Compte créé, mais l'email de vérification n'a pas pu être envoyé. Contactez l'administrateur.", "warning")
+        @self.app.route("/my-ratings")
+        @login_required
+        def my_ratings():
+            """Page des morceaux notés par l'utilisateur"""
+            tracks = self.supabase_service.get_user_ratings(current_user.email)
+            return render_template("my_ratings.html", tracks=tracks)
         
-        return redirect(url_for('login'))
-    
-    return render_template("register.html")
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
+        @self.app.route("/stats")
+        def stats():
+            """API pour les statistiques"""
+            return jsonify(self.supabase_service.get_global_stats())
         
-        user = user_manager.get_user(email)
-        
-        if user and user.check_password(password):
-            login_user(user, remember=True)
-            next_page = request.args.get('next')
-            flash(f"Bienvenue {user.username} !", "success")
-            return redirect(next_page) if next_page else redirect(url_for('home'))
-        else:
-            flash("Email ou mot de passe incorrect", "error")
-    
-    return render_template("login.html")
+        @self.app.route('/profile/config', methods=['GET', 'POST'])
+        @login_required
+        def profile_config():
+            """Page de configuration du profil"""
+            user_id = current_user.id if hasattr(current_user, 'id') else current_user.email
+            user = self.supabase_service.get_user_profile(user_id)
+            
+            if not user:
+                flash('Utilisateur non trouvé', 'error')
+                return redirect(url_for('home'))
+            
+            messages = []
+            
+            if request.method == 'POST':
+                try:
+                    # Récupérer les données du formulaire
+                    profile_data = {
+                        'username': request.form.get('username'),
+                        'full_name': request.form.get('full_name'),
+                        'bio': request.form.get('bio'),
+                        'favorite_genres': request.form.get('favorite_genres'),
+                        'location': request.form.get('location')
+                    }
+                    
+                    # Gestion de l'upload d'avatar
+                    if 'avatar' in request.files:
+                        file = request.files['avatar']
+                        if file and file.filename and file.filename != '':
+                            # Lire les données du fichier
+                            file_data = file.read()
+                            avatar_url = self.supabase_service.upload_avatar(user_id, file_data, file.filename)
+                            if avatar_url:
+                                profile_data['avatar_url'] = avatar_url
+                                messages.append({'type': 'success', 'text': 'Photo de profil mise à jour avec succès!'})
+                            else:
+                                messages.append({'type': 'error', 'text': 'Erreur lors de l\'upload de la photo'})
+                    
+                    # Mettre à jour le profil
+                    if self.supabase_service.update_user_profile(user_id, profile_data):
+                        messages.append({'type': 'success', 'text': 'Profil mis à jour avec succès!'})
+                        # Récupérer les données mises à jour
+                        user = self.supabase_service.get_user_profile(user_id)
+                    else:
+                        messages.append({'type': 'error', 'text': 'Erreur lors de la mise à jour du profil'})
+                        
+                except Exception as e:
+                    messages.append({'type': 'error', 'text': f'Erreur: {str(e)}'})
+            
+            # Récupérer les statistiques utilisateur
+            user_stats = self.supabase_service.get_user_statistics(user_id)
+            
+            return render_template('profile_config.html', 
+                             current_user=user, 
+                             user_stats=user_stats, 
+                             messages=messages)
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    flash("Vous avez été déconnecté", "info")
-    return redirect(url_for('home'))
+    def run(self, **kwargs):
+        """Lance l'application"""
+        self.app.run(**kwargs)
 
-@app.route("/verify-email/<token>")
-def verify_email(token):
-    email = email_verifier.verify_token(token)
-    
-    if email:
-        if user_manager.verify_user(email):
-            flash("Email vérifié avec succès ! Vous pouvez maintenant noter des morceaux.", "success")
-            return redirect(url_for('login'))
-        else:
-            flash("Erreur lors de la vérification", "error")
-    else:
-        flash("Lien de vérification invalide ou expiré", "error")
-    
-    return redirect(url_for('register'))
-
-@app.route("/top-rated")
-def top_rated():
-    """Page affichant les morceaux les mieux notés"""
-    top_tracks = get_top_rated_tracks(limit=20)
-    return render_template("top_rated.html", tracks=top_tracks)
-
-@app.route("/stats")
-def stats():
-    """API pour obtenir les statistiques des ratings"""
-    top_tracks = get_top_rated_tracks(limit=10)
-    total_ratings = sum(track.get("count", 0) for track in top_tracks)
-    
-    return jsonify({
-        "total_ratings": total_ratings,
-        "total_tracks": len(top_tracks),
-        "top_tracks": top_tracks[:5]  # Top 5 pour l'API
-    })
-
-@app.route("/my-ratings")
-@login_required
-def my_ratings():
-    """Page affichant les titres notés par l'utilisateur connecté"""
-    user_tracks = get_user_rated_tracks(current_user.email)
-    return render_template("my_ratings.html", tracks=user_tracks)
-
+# Point d'entrée de l'application
+def create_app(config_name='default'):
+    """Factory pour créer l'application"""
+    return SoundJuryApp(config_name)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Créer et lancer l'application
+    app = create_app()
+    app.run(debug=True, host="0.0.0.0", port=5000)

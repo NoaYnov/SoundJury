@@ -5,113 +5,241 @@
 {% block content %}
 <style>
   .search-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 2rem auto;
     padding: 0 1rem;
   }
   
+  .search-header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .search-header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  
+  .search-header p {
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    color: var(--fg);
+    opacity: 0.8;
+  }
+  
   .search-form {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
     display: flex;
     gap: 1rem;
-    margin-bottom: 2rem;
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
   }
   
   .search-input {
     flex: 1;
-    padding: 0.8rem;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
+    min-width: 250px;
+    padding: 1rem 1.5rem;
+    border: 2px solid rgba(0,255,204,0.3);
+    border-radius: 12px;
     background: var(--bg);
     color: var(--fg);
     font-size: 1rem;
-    transition: border-color 0.3s;
+    transition: all 0.3s ease;
   }
   
   .search-input:focus {
     outline: none;
     border-color: var(--accent);
-  }
-  
-  .search-input::placeholder {
-    color: var(--fg);
-    opacity: 0.5;
+    box-shadow: 0 0 0 3px rgba(0,255,204,0.1);
   }
   
   .search-btn {
-    background: var(--accent);
-    color: var(--bg);
+    padding: 1rem 2rem;
+    background: var(--gradient);
+    color: white;
     border: none;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .search-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,255,204,0.3);
+    box-shadow: 0 4px 15px rgba(0,255,204,0.3);
   }
   
   .track-list {
     display: grid;
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
   }
-
+  
   .track {
     background: var(--card-bg);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+    border-radius: 16px;
     padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
     cursor: pointer;
-    border-left: 4px solid transparent;
   }
   
   .track:hover {
-    background: var(--hover);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    border-left-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
   }
   
-  .track img {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  .track.expanded {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    border-color: var(--accent);
   }
   
-  .track-info {
-    flex: 1;
+  .track-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    margin-top: 1rem;
   }
   
-  .track-info h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.2rem;
+  .track-details.active {
+    max-height: 800px;
+    opacity: 1;
+  }
+  
+  .track-details h3 {
+    color: var(--accent);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .track-details .detail-item {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    align-items: center;
+  }
+  
+  .track-details .detail-label {
+    font-weight: 600;
     color: var(--fg);
-  }
-  
-  .track-info p {
-    margin: 0;
-    color: var(--fg);
-    opacity: 0.7;
     font-size: 0.95rem;
   }
   
+  .track-details .detail-value {
+    color: var(--fg);
+    opacity: 0.8;
+    font-size: 0.95rem;
+  }
+  
+  .audio-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(0,255,204,0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(0,255,204,0.3);
+  }
+  
+  .audio-preview h4 {
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  .audio-preview audio {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--bg);
+  }
+  
+  .audio-preview audio::-webkit-media-controls-panel {
+    background-color: var(--card-bg);
+  }
+  
+  .no-preview {
+    text-align: center;
+    padding: 1rem;
+    color: var(--fg);
+    opacity: 0.6;
+    font-style: italic;
+  }
+  
+  .no-preview i {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+  }
+  
+  .expand-indicator {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .expand-indicator:hover {
+    background: var(--fg);
+    transform: scale(1.1);
+  }
+  
+  .track.expanded .expand-indicator {
+    transform: rotate(180deg);
+  }
+  
+  .track-content {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .track-content img {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+  }
+  
+  .track-info h2 {
+    font-size: 1.2rem;
+    color: var(--fg);
+    margin-bottom: 0.5rem;
+  }
+  
+  .track-info p {
+    color: var(--accent);
+    font-weight: 500;
+    margin: 0;
+  }
+  
   .rating {
-    margin: 0.75rem 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin: 1rem 0;
   }
   
   .stars {
@@ -120,459 +248,475 @@
   }
   
   .star {
-    font-size: 1.3rem;
     color: #ddd;
+    font-size: 1.2rem;
     cursor: pointer;
-    transition: all 0.2s;
-    user-select: none;
+    transition: color 0.2s;
   }
   
-  .star.filled,
-  .star:hover {
+  .star.active, .star:hover {
     color: #ffd700;
-    transform: scale(1.1);
-  }
-  
-  .star:hover ~ .star {
-    color: #ddd;
   }
   
   .rating-info {
     font-size: 0.9rem;
-    color: var(--accent);
-    margin-left: 0.5rem;
-    font-weight: 600;
+    color: var(--fg);
+    opacity: 0.7;
   }
   
   .links {
-    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
   
   .links a {
-    margin-right: 0.75rem;
-    font-size: 0.85rem;
-    color: var(--accent);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
     text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    transition: all 0.2s;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .links a[href*="spotify"] {
+    background: linear-gradient(135deg, #1DB954, #1ED760);
+    color: white;
+  }
+  
+  .links a[href*="youtube"] {
+    background: linear-gradient(135deg, #FF0000, #CC0000);
+    color: white;
+  }
+  
+  .links a[href*="deezer"] {
+    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    color: white;
   }
   
   .links a:hover {
-    background: var(--hover);
-    transform: translateY(-1px);
-  }
-  
-  .details {
-    margin-top: 1rem;
-    display: none;
-    font-size: 0.9rem;
-    opacity: 0;
-    transition: opacity 0.3s;
-    padding: 1rem;
-    background: var(--bg);
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  
-  .details.show {
-    display: block;
-    opacity: 1;
-  }
-  
-  .details audio {
-    width: 100%;
-    margin-top: 0.5rem;
-  }
-  
-  .loader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: 2000;
-  }
-  
-  body.light .loader {
-    background: rgba(255,255,255,0.8);
-  }
-  
-  .loader.show {
-    visibility: visible;
-    opacity: 1;
-  }
-  
-  .loader .spinner {
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top: 4px solid var(--accent);
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-  }
-  
-  body.light .loader .spinner {
-    border: 4px solid rgba(0,0,0,0.3);
-    border-top: 4px solid var(--accent);
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
   
   .no-results {
     text-align: center;
-    padding: 3rem 1rem;
+    padding: 3rem;
     color: var(--fg);
-    opacity: 0.6;
+    opacity: 0.8;
   }
   
   .no-results h3 {
-    margin-bottom: 1rem;
     font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent);
   }
   
-  .rating-animation {
-    animation: ratingPulse 0.3s ease-out;
+  .auth-message {
+    background: rgba(255,152,0,0.1);
+    border: 1px solid rgba(255,152,0,0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    text-align: center;
   }
   
-  @keyframes ratingPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+  .auth-message a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  
+  .auth-message a:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 768px) {
+    .search-form {
+      flex-direction: column;
+    }
+    
+    .search-input {
+      min-width: 100%;
+    }
+    
+    .track-list {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .track-content {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .track-content img {
+      width: 100px;
+      height: 100px;
+    }
+    
+    .track {
+      padding: 1rem;
+    }
+    
+    .track.expanded {
+      padding: 1.5rem;
+    }
+    
+    .rating {
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .track-details .detail-item {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+      text-align: center;
+    }
+    
+    .track-details .detail-label {
+      font-size: 0.9rem;
+    }
+    
+    .expand-indicator {
+      top: 0.5rem;
+      right: 0.5rem;
+    }
   }
 </style>
 
 <div class="search-container">
+  <div class="search-header">
+    <h1><i class="fas fa-search"></i> Recherche Musicale</h1>
+    <p>Découvrez et notez vos morceaux préférés</p>
+  </div>
+  
   {% if not current_user.is_authenticated %}
-  <div style="max-width: 600px; margin: 0 auto 1rem; padding: 1rem; background: rgba(0,255,204,0.1); border-radius: 8px; text-align: center;">
-    <p style="margin: 0; color: var(--accent);">
-      🔒 <strong>Connectez-vous pour noter les morceaux</strong> - 
-      <a href="{{ url_for('login') }}" style="color: var(--accent); text-decoration: underline;">Se connecter</a> ou 
-      <a href="{{ url_for('register') }}" style="color: var(--accent); text-decoration: underline;">créer un compte</a>
+  <div class="auth-message">
+    <p>
+      <i class="fas fa-info-circle"></i> 
+      <strong>Connectez-vous pour noter les morceaux !</strong> 
+      <a href="{{ url_for('login') }}">Se connecter</a> ou 
+      <a href="{{ url_for('register') }}">créer un compte</a>
     </p>
   </div>
   {% elif not current_user.is_verified %}
-  <div style="max-width: 600px; margin: 0 auto 1rem; padding: 1rem; background: rgba(255,152,0,0.1); border-radius: 8px; text-align: center;">
-    <p style="margin: 0; color: #ff9800;">
-      ⚠️ <strong>Vérifiez votre email pour noter les morceaux</strong> - Consultez votre boîte mail
+  <div class="auth-message">
+    <p>
+      <i class="fas fa-exclamation-triangle"></i> 
+      <strong>Vérifiez votre email pour noter les morceaux</strong> - Consultez votre boîte mail
     </p>
   </div>
   {% endif %}
 
-  <div class="search-form">
-    <form method="POST" style="display: flex; gap: 1rem; width: 100%; margin: 0;">
-      <input type="text" name="query" placeholder="Rechercher un artiste ou un titre..." 
-             value="{{ query }}" class="search-input" required>
-      <button type="submit" class="search-btn">🔍 Rechercher</button>
-    </form>
-  </div>
+  <form class="search-form" method="POST" action="{{ url_for('search') }}">
+    <input
+      type="text"
+      name="query"
+      class="search-input"
+      placeholder="Rechercher un artiste, titre ou album..."
+      value="{{ query or '' }}"
+      required
+    />
+    <button type="submit" class="search-btn">
+      <i class="fas fa-search"></i>
+      <span>Rechercher</span>
+    </button>
+  </form>
   
-  <div id="track-list" class="track-list">
+  <div class="track-list">
     {% if tracks %}
       {% for track in tracks %}
-      <div class="track" onclick="toggleDetails(this, '{{ track.artist }}', '{{ track.name }}', '{{ track.id }}')">
-        <img src="{{ track.image }}" alt="{{ track.name }}">
-        <div class="track-info">
-          <h2>{{ track.name }}</h2>
-          <p>{{ track.artist }}</p>
-          
-          <div class="rating" data-track-id="{{ track.artist }}_{{ track.name }}">
-            <div class="stars"></div>
-            <div class="rating-info"></div>
-          </div>
-          
-          <div class="links">
-            {% if track.spotify_url %}
-              <a href="{{ track.spotify_url }}" target="_blank">🎵 Spotify</a>
-            {% endif %}
-            {% if track.deezer_url %}
-              <a href="{{ track.deezer_url }}" target="_blank">🎶 Deezer</a>
+      <div class="track" onclick="toggleTrackDetails(this)">
+        <!-- Indicateur d'expansion -->
+        <div class="expand-indicator">
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="track-content">
+          <img src="{{ track.image or 'https://via.placeholder.com/80x80/00D4AA/ffffff?text=♪' }}" alt="{{ track.title }}">
+          <div class="track-info">
+            <h2>{{ track.title }}</h2>
+            <p>{{ track.artist }}</p>
+            {% if track.album %}
+            <p style="opacity: 0.7; font-size: 0.9rem;">{{ track.album }}</p>
             {% endif %}
           </div>
         </div>
         
-        <div class="details">
-          <!-- Contenu chargé dynamiquement -->
+        <!-- Système de notation -->
+        {% if current_user.is_authenticated %}
+        <div class="rating">
+          <div class="stars" data-track-id="{{ track.id }}" data-artist="{{ track.artist }}" data-title="{{ track.title }}">
+            {% for i in range(1, 6) %}
+            <span class="star" data-rating="{{ i }}">★</span>
+            {% endfor %}
+          </div>
+          <div class="rating-info">
+            {% if track.avg_rating > 0 %}
+            {{ "%.1f"|format(track.avg_rating) }}/5 ({{ track.rating_count }} votes)
+            {% else %}
+            Pas encore noté
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Détails du morceau (cachés par défaut) -->
+        <div class="track-details">
+          <h3><i class="fas fa-info-circle"></i> Détails du morceau</h3>
+          
+          <div class="detail-item">
+            <span class="detail-label">Titre :</span>
+            <span class="detail-value">{{ track.title }}</span>
+          </div>
+          
+          <div class="detail-item">
+            <span class="detail-label">Artiste :</span>
+            <span class="detail-value">{{ track.artist }}</span>
+          </div>
+          
+          {% if track.album %}
+          <div class="detail-item">
+            <span class="detail-label">Album :</span>
+            <span class="detail-value">{{ track.album }}</span>
+          </div>
+          {% endif %}
+          
+          {% if track.duration %}
+          <div class="detail-item">
+            <span class="detail-label">Durée :</span>
+            <span class="detail-value">{{ track.duration }}</span>
+          </div>
+          {% endif %}
+          
+          <!-- Extrait audio -->
+          {% if track.preview_url %}
+          <div class="audio-preview">
+            <h4><i class="fas fa-play-circle"></i> Extrait audio</h4>
+            <audio controls preload="none">
+              <source src="{{ track.preview_url }}" type="audio/mpeg">
+              Votre navigateur ne supporte pas l'élément audio.
+            </audio>
+          </div>
+          {% else %}
+          <div class="audio-preview">
+            <div class="no-preview">
+              <i class="fas fa-volume-mute"></i>
+              Aucun extrait audio disponible
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- Liens vers les plateformes -->
+        <div class="links">
+          {% if track.deezer_url %}
+          <a href="{{ track.deezer_url }}" target="_blank">
+            <i class="fab fa-deezer"></i> Deezer
+          </a>
+          {% endif %}
+          {% if track.youtube_url %}
+          <a href="{{ track.youtube_url }}" target="_blank">
+            <i class="fab fa-youtube"></i> YouTube
+          </a>
+          {% endif %}
+          {% if track.spotify_url %}
+          <a href="{{ track.spotify_url }}" target="_blank">
+            <i class="fab fa-spotify"></i> Spotify
+          </a>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
     {% elif query %}
       <div class="no-results">
-        <h3>🔍 Aucun résultat</h3>
+        <h3><i class="fas fa-search"></i> Aucun résultat</h3>
         <p>Aucun morceau trouvé pour "{{ query }}"</p>
         <p>Essayez avec un autre terme de recherche.</p>
       </div>
     {% else %}
       <div class="no-results">
-        <h3>🎵 Recherchez votre musique</h3>
+        <h3><i class="fas fa-music"></i> Recherchez votre musique</h3>
         <p>Utilisez la barre de recherche ci-dessus pour trouver vos morceaux préférés.</p>
       </div>
     {% endif %}
   </div>
 </div>
 
-<div class="loader">
-  <div class="spinner"></div>
-</div>
-
 <script>
+// Fonction pour développer/réduire les détails d'un morceau
+function toggleTrackDetails(card) {
+  const details = card.querySelector('.track-details');
+  const isExpanded = card.classList.contains('expanded');
+  
+  // Fermer toutes les autres cartes
+  document.querySelectorAll('.track.expanded').forEach(otherCard => {
+    if (otherCard !== card) {
+      otherCard.classList.remove('expanded');
+      otherCard.querySelector('.track-details').classList.remove('active');
+    }
+  });
+  
+  // Basculer la carte actuelle
+  if (isExpanded) {
+    card.classList.remove('expanded');
+    details.classList.remove('active');
+  } else {
+    card.classList.add('expanded');
+    details.classList.add('active');
+  }
+}
+
+// Système de notation
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialiser les ratings pour tous les titres
-  loadExistingRatings();
+    const ratingStars = document.querySelectorAll('.stars');
+    
+    ratingStars.forEach(starsContainer => {
+        const stars = starsContainer.querySelectorAll('.star');
+        const trackId = starsContainer.dataset.trackId;
+        const artist = starsContainer.dataset.artist;
+        const title = starsContainer.dataset.title;
+        
+        stars.forEach((star, index) => {
+            star.addEventListener('click', function(e) {
+                e.stopPropagation(); // Éviter de déclencher l'expansion de la carte
+                
+                const rating = parseInt(this.dataset.rating);
+                
+                // Mettre à jour visuellement
+                stars.forEach((s, i) => {
+                    s.classList.toggle('active', i < rating);
+                });
+                
+                // Envoyer la note au serveur
+                fetch('/rate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        track_id: trackId,
+                        artist: artist,
+                        title: title,
+                        rating: rating
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour l'affichage
+                        const ratingInfo = starsContainer.parentElement.querySelector('.rating-info');
+                        if (ratingInfo) {
+                            ratingInfo.textContent = `${data.avg_rating.toFixed(1)}/5 (${data.count} votes)`;
+                        }
+                        
+                        // Notification de succès
+                        showNotification('Note enregistrée avec succès!', 'success');
+                    } else {
+                        throw new Error(data.message || 'Erreur lors de l\'enregistrement');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                });
+            });
+            
+            // Effet de survol
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.rating);
+                stars.forEach((s, i) => {
+                    s.style.color = i < rating ? '#ffd700' : '#ddd';
+                });
+            });
+        });
+        
+        // Restaurer l'état au survol
+        starsContainer.addEventListener('mouseleave', function() {
+            stars.forEach(star => {
+                star.style.color = star.classList.contains('active') ? '#ffd700' : '#ddd';
+            });
+        });
+    });
 });
 
-function loadExistingRatings() {
-  const ratingContainers = document.querySelectorAll('.rating');
-  
-  ratingContainers.forEach(container => {
-    const trackId = container.getAttribute('data-track-id');
-    if (trackId) {
-      const parts = trackId.split('_');
-      if (parts.length >= 2) {
-        const artist = parts[0];
-        const title = parts.slice(1).join('_');
-        setupRatingSystem(container, artist, title);
-        loadTrackRating(container, artist, title);
-      }
-    }
-  });
-}
-
-function setupRatingSystem(container, artist, title) {
-  const starsContainer = container.querySelector('.stars');
-  const ratingInfo = container.querySelector('.rating-info');
-  
-  // Créer les étoiles
-  starsContainer.innerHTML = '';
-  for (let i = 1; i <= 5; i++) {
-    const star = document.createElement('span');
-    star.className = 'star';
-    star.textContent = '★';
-    star.setAttribute('data-rating', i);
-    star.addEventListener('click', (e) => {
-      e.stopPropagation();
-      submitRating(artist, title, i, container);
-    });
+// Fonction pour afficher les notifications
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        max-width: 300px;
+    `;
     
-    star.addEventListener('mouseenter', () => {
-      updateStarDisplay(starsContainer, i);
-    });
+    switch(type) {
+        case 'success':
+            notification.style.background = '#4caf50';
+            break;
+        case 'error':
+            notification.style.background = '#f44336';
+            break;
+        default:
+            notification.style.background = '#2196f3';
+    }
     
-    starsContainer.appendChild(star);
-  }
-  
-  // Reset au survol de sortie
-  starsContainer.addEventListener('mouseleave', () => {
-    const currentRating = getCurrentRating(container);
-    updateStarDisplay(starsContainer, currentRating);
-  });
-}
-
-function loadTrackRating(container, artist, title) {
-  fetch('/details', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ artist: artist, title: title })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.average !== undefined) {
-      updateRatingDisplay(container, data.average, data.count, data.user_rating);
-    }
-  })
-  .catch(error => {
-    console.error('Erreur lors du chargement du rating:', error);
-  });
-}
-
-function getCurrentRating(container) {
-  const userRating = container.getAttribute('data-user-rating');
-  return userRating ? parseInt(userRating) : 0;
-}
-
-function updateStarDisplay(starsContainer, rating) {
-  const stars = starsContainer.querySelectorAll('.star');
-  stars.forEach((star, index) => {
-    if (index < rating) {
-      star.classList.add('filled');
-    } else {
-      star.classList.remove('filled');
-    }
-  });
-}
-
-function updateRatingDisplay(container, average, count, userRating) {
-  const starsContainer = container.querySelector('.stars');
-  const ratingInfo = container.querySelector('.rating-info');
-  
-  // Afficher la note de l'utilisateur s'il en a une
-  if (userRating !== null && userRating !== undefined) {
-    updateStarDisplay(starsContainer, userRating);
-    container.setAttribute('data-user-rating', userRating);
-  }
-  
-  // Afficher les informations de rating global
-  if (count > 0) {
-    ratingInfo.textContent = `${average.toFixed(1)}/5 (${count} vote${count > 1 ? 's' : ''})`;
-  } else {
-    ratingInfo.textContent = 'Pas encore noté';
-  }
-}
-
-function submitRating(artist, title, rating, container) {
-  {% if not current_user.is_authenticated %}
-    alert('Vous devez vous connecter pour noter des morceaux');
-    return;
-  {% elif not current_user.is_verified %}
-    alert('Vous devez vérifier votre email pour noter des morceaux');
-    return;
-  {% endif %}
-  
-  // Animation
-  container.classList.add('rating-animation');
-  setTimeout(() => container.classList.remove('rating-animation'), 300);
-  
-  fetch('/rate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      artist: artist,
-      title: title,
-      rating: rating
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      updateRatingDisplay(container, data.average, data.count, rating);
-      
-      // Afficher message de succès
-      const message = data.message || 'Note enregistrée !';
-      showNotification(message, 'success');
-    } else {
-      showNotification(data.error || 'Erreur lors de l\'enregistrement', 'error');
-    }
-  })
-  .catch(error => {
-    console.error('Erreur:', error);
-    showNotification('Erreur de connexion', 'error');
-  });
-}
-
-function showNotification(message, type) {
-  // Créer une notification temporaire
-  const notification = document.createElement('div');
-  notification.textContent = message;
-  notification.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    background: ${type === 'success' ? 'var(--accent)' : '#ff4444'};
-    color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 1000;
-    animation: slideIn 0.3s ease-out;
-  `;
-  
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease-out';
-    setTimeout(() => document.body.removeChild(notification), 300);
-  }, 3000);
-}
-
-function toggleDetails(trackElement, artist, title, artistId) {
-  const details = trackElement.querySelector('.details');
-  const isShowing = details.classList.contains('show');
-  
-  if (isShowing) {
-    details.classList.remove('show');
-    return;
-  }
-  
-  // Charger les détails si pas encore fait
-  const trackId = `${artist}_${title}`;
-  if (!details.hasAttribute('data-loaded')) {
-    showLoader();
+    notification.textContent = message;
+    document.body.appendChild(notification);
     
-    fetch('/details', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        artist: artist,
-        title: title,
-        artist_id: artistId
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      hideLoader();
-      
-      let html = `
-        <h3>${data.artist} - ${data.title}</h3>
-        <p><strong>Durée:</strong> ${data.duration || 'N/A'}</p>
-        <p><strong>Album:</strong> ${data.album || 'N/A'}</p>
-        <p><strong>Année:</strong> ${data.year || 'N/A'}</p>
-      `;
-      
-      if (data.preview_url) {
-        html += `<audio controls><source src="${data.preview_url}" type="audio/mpeg">Votre navigateur ne supporte pas l'audio.</audio>`;
-      }
-      
-      details.innerHTML = html;
-      details.setAttribute('data-loaded', 'true');
-      details.classList.add('show');
-    })
-    .catch(error => {
-      hideLoader();
-      console.error('Erreur:', error);
-      details.innerHTML = '<p>Erreur lors du chargement des détails</p>';
-      details.classList.add('show');
-    });
-  } else {
-    details.classList.add('show');
-  }
+    // Supprimer après 3 secondes
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
 
-function showLoader() {
-  const loader = document.querySelector('.loader');
-  if (loader) {
-    loader.classList.add('show');
-  }
-}
-
-function hideLoader() {
-  const loader = document.querySelector('.loader');
-  if (loader) {
-    loader.classList.remove('show');
-  }
-}
-
-// Styles pour les animations
+// Animations CSS
 const style = document.createElement('style');
 style.textContent = `
-  @keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  @keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-  }
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
 `;
 document.head.appendChild(style);
 </script>
+
 {% endblock %}

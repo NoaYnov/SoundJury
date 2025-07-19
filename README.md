@@ -1,53 +1,91 @@
-# SoundJury
+# 🎵 SoundJury
 
-SoundJury est une application web légère permettant de rechercher de la musique et d'afficher des informations enrichies (genres, durée, date de sortie, plateformes disponibles, extrait audio).  
-Elle s'inspire du concept de Letterboxd mais appliqué à l'univers musical.
+Une application web moderne pour découvrir, noter et partager de la musique tendance.
 
-## Fonctionnalités
+## 🚀 Fonctionnalités
 
-- Recherche de titres via Spotify
-- Affichage des pochettes, artistes et plateformes (Spotify, Deezer, YouTube)
-- Détails supplémentaires chargés dynamiquement via AJAX :
-  - Genres musicaux
-  - Durée
-  - Date de sortie
-  - Extrait audio (si disponible)
-- Interface simple, responsive et interactive
-- Clic sur la carte pour afficher/masquer les détails
+- 🎼 **Découverte musicale** : Explorez les morceaux les plus populaires
+- ⭐ **Système de notation** : Notez vos morceaux préférés de 1 à 5 étoiles
+- 🔍 **Recherche avancée** : Trouvez des artistes, albums et morceaux
+- 🎧 **Extraits audio** : Écoutez des prévisualisations de 30 secondes
+- 📱 **Interface responsive** : Expérience optimisée sur mobile et desktop
+- 👥 **Communauté** : Partagez vos goûts musicaux avec d'autres utilisateurs
 
-## Installation
+## 🏗️ Architecture
 
-1. **Cloner le projet** :
+```
+SoundJury/
+├── soundjury/           # Code principal de l'application
+│   ├── models/          # Modèles de données
+│   ├── services/        # Services (API Deezer, authentification)
+│   ├── templates/       # Templates HTML
+│   ├── static/          # Fichiers statiques (CSS, JS, images)
+│   ├── utils/           # Utilitaires (base de données, email)
+│   └── data/            # Données persistantes
+├── tests/               # Tests unitaires et d'intégration
+├── scripts/             # Scripts utilitaires
+├── docs/                # Documentation
+└── requirements.txt     # Dépendances Python
+```
+
+## 🛠️ Installation
+
+1. **Clonez le repository**
    ```bash
-   git clone https://github.com/votre-utilisateur/soundjury.git
+   git clone https://github.com/NoaYnov/SoundJury.git
+   cd SoundJury
+   ```
+
+2. **Installez les dépendances**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configuration**
+   - Copiez `.env.example` vers `.env`
+   - Configurez vos clés API Spotify/Deezer
+   - Configurez votre serveur email (optionnel)
+
+4. **Lancez l'application**
+   ```bash
    cd soundjury
-   ```
-
-2. **Créer un environnement virtuel (optionnel mais recommandé)** :
-   ```bash
-   python -m venv venv
-   source venv/bin/activate   # ou venv\Scripts\activate sous Windows
-   ```
-
-3. **Installer les dépendances** :
-   ```bash
-   pip install flask
-   ```
-
-4. **Lancer le serveur** :
-   ```bash
    python app.py
    ```
 
-5. Ouvrir votre navigateur à l'adresse :  
-   [http://localhost:5000](http://localhost:5000)
+## 📚 Documentation
 
-## Architecture
+- [Guide de démarrage](docs/DEMARRAGE_RAPIDE.md)
+- [Configuration de la base de données](docs/DATABASE_SETUP.md)
+- [Configuration email](docs/EMAIL_SETUP.md)
+- [Guide responsive](docs/GUIDE_RESPONSIVE.md)
 
+## 🧪 Tests
+
+Les tests sont organisés dans le dossier `tests/`. Pour les exécuter :
+
+```bash
+python -m pytest tests/
 ```
-soundjury/
-├── app.py                # Serveur principal Flask
-├── music_api.py          # Logique de récupération d'informations musicales
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! Consultez nos [guidelines de contribution](docs/CONTRIBUTING.md).
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## 🎯 Roadmap
+
+- [ ] Intégration API Spotify complète
+- [ ] Recommandations personnalisées
+- [ ] Playlists collaboratives
+- [ ] Mode hors ligne
+- [ ] Application mobile native
+
+---
+
+Développé avec ❤️ par [NoaYnov](https://github.com/NoaYnov)
 ├── templates/
 │   └── index.html        # Interface utilisateur (HTML + JS intégré)
 ```

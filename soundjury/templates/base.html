@@ -552,7 +552,7 @@
                     <i class="fas fa-cog"></i> Profil
                 </a>
                 <div class="user-info">
-                    <span class="username">{{ current_user.username }}</span>
+                    <span class="username">{{ current_user.username or current_user.email }}</span>
                     {% if current_user.is_verified %}
                         <span class="status verified">
                             <i class="fas fa-check"></i> Vérifié
@@ -605,7 +605,7 @@
                     <i class="fas fa-cog"></i> Profil
                 </a>
                 <div class="user-info">
-                    <span class="username">{{ current_user.username }}</span>
+                    <span class="username">{{ current_user.username or current_user.email }}</span>
                     {% if current_user.is_verified %}
                         <span class="status verified">
                             <i class="fas fa-check"></i> Vérifié

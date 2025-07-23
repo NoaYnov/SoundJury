@@ -2,6 +2,14 @@
 .env
 ratings.json
 
+# Fichiers de test et temporaires
+test_*.py
+*_test.py
+*.tmp
+*.bak
+*.log
+*.pid
+
 # Python
 __pycache__/
 *.py[cod]

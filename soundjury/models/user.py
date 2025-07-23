@@ -12,7 +12,8 @@ class User(UserMixin):
     """Modèle utilisateur avec authentification"""
     
     def __init__(self, email: str, username: str, password_hash: str = None, 
-                 is_verified: bool = False, verification_token: str = None):
+                 is_verified: bool = False, verification_token: str = None, id: str = None):
+        self.id = id or email  # Utiliser l'ID Supabase si fourni, sinon l'email
         self.email = email
         self.username = username
         self.password_hash = password_hash
@@ -23,7 +24,7 @@ class User(UserMixin):
         
     def get_id(self) -> str:
         """Retourne l'ID unique de l'utilisateur pour Flask-Login"""
-        return self.email
+        return self.id or self.email
     
     def set_password(self, password: str) -> None:
         """Définit le mot de passe hashé"""

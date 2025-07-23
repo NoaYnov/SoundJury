@@ -167,7 +167,13 @@
       <span class="stat-label">Titres notés</span>
     </div>
     <div class="stat-item">
-      <span class="stat-number">{{ "%.1f"|format((tracks|sum(attribute='user_rating'))/tracks|length) }}</span>
+      <span class="stat-number">
+        {% if tracks|length > 0 %}
+          {{ "%.1f"|format((tracks|sum(attribute='user_rating'))/(tracks|length)) }}
+        {% else %}
+          0.0
+        {% endif %}
+      </span>
       <span class="stat-label">Note moyenne</span>
     </div>
   </div>

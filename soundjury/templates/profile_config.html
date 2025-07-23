@@ -1,254 +1,576 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration du profil - SoundJury</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .profile-config {
-            max-width: 600px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
+{% extends "base.html" %}
+
+{% block title %}Configuration du profil - SoundJury{% endblock %}
+
+{% block content %}
+<style>
+  .profile-config-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  .profile-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: var(--gradient);
+    color: white;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .profile-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200"><path d="M0,100 C150,200 350,0 500,100 C650,200 850,0 1000,100 L1000,200 L0,200 Z" fill="rgba(255,255,255,0.1)"/></svg>');
+    background-size: cover;
+    opacity: 0.3;
+  }
+  
+  .profile-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .profile-header p {
+    opacity: 0.9;
+    font-size: 1.1rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .config-sections {
+    display: grid;
+    gap: 2rem;
+  }
+  
+  .config-section {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .avatar-section {
+    text-align: center;
+  }
+  
+  .avatar-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--accent);
+    margin-bottom: 1rem;
+  }
+  
+  .avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 1rem;
+    border: 4px solid var(--accent);
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--fg);
+    font-weight: 600;
+  }
+  
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    background: var(--input-bg);
+    color: var(--fg);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+  }
+  
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,204,0.1);
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .theme-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .theme-option {
+    padding: 1.5rem;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    background: var(--card-bg);
+  }
+  
+  .theme-option:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  
+  .theme-option.active {
+    border-color: var(--accent);
+    background: rgba(0,255,204,0.1);
+  }
+  
+  .theme-preview {
+    width: 100%;
+    height: 60px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  
+  .theme-preview.dark {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+  }
+  
+  .theme-preview.light {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    border: 1px solid #e9ecef;
+  }
+  
+  .theme-preview::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 4px;
+    opacity: 0.7;
+  }
+  
+  .file-input-wrapper {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    margin-top: 1rem;
+  }
+  
+  .file-input-wrapper input[type="file"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+  
+  .file-input-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .file-input-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,255,204,0.3);
+  }
+  
+  .btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+  
+  .btn-primary {
+    background: var(--gradient);
+    color: white;
+  }
+  
+  .btn-secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+  }
+  
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(0,255,204,0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(0,255,204,0.2);
+  }
+  
+  .stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-label {
+    color: var(--fg);
+    opacity: 0.8;
+    font-size: 0.9rem;
+  }
+  
+  @media (max-width: 768px) {
+    .profile-config-container {
+      padding: 0 0.5rem;
+    }
+    
+    .config-section {
+      padding: 1.5rem;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+    
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="profile-config-container">
+  <div class="profile-header">
+    <h1><i class="fas fa-user-cog"></i> Configuration du profil</h1>
+    <p>Personnalisez votre expérience SoundJury</p>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" action="{{ url_for('profile_config') }}">
+    <div class="config-sections">
+      <!-- Section Avatar -->
+      <div class="config-section">
+        <h2 class="section-title">
+          <i class="fas fa-user-circle"></i>
+          Photo de profil
+        </h2>
         
-        .profile-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .avatar-section {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .avatar-preview {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #667eea;
-            margin-bottom: 1rem;
-        }
-        
-        .avatar-placeholder {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0 auto 1rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #2d3748;
-        }
-        
-        .form-group input, .form-group textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-        
-        .form-group input:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-            width: 100%;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: #718096;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            margin-top: 0.5rem;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        
-        .stat-card {
-            background: #f7fafc;
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #667eea;
-        }
-        
-        .stat-label {
-            font-size: 0.875rem;
-            color: #718096;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="profile-config">
-            <div class="profile-header">
-                <h1>⚙️ Configuration du profil</h1>
-                <p>Personnalisez votre profil SoundJury</p>
+        <div class="avatar-section">
+          {% if user and user.avatar_url %}
+          <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar-preview" id="avatarPreview">
+          {% else %}
+          <div class="avatar-placeholder" id="avatarPreview">
+            {{ (user.username or user.email or 'U')[0].upper() }}
+          </div>
+          {% endif %}
+          
+          <div class="file-input-wrapper">
+            <input type="file" id="avatar" name="avatar" accept="image/*" onchange="previewAvatar(this)">
+            <div class="file-input-button">
+              <i class="fas fa-camera"></i>
+              Changer la photo
             </div>
-
-            <!-- Statistiques utilisateur -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number">{{ user_stats.total_ratings or 0 }}</div>
-                    <div class="stat-label">Notes données</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{{ user_stats.avg_rating or 0 }}/5</div>
-                    <div class="stat-label">Note moyenne</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{{ user_stats.tracks_rated or 0 }}</div>
-                    <div class="stat-label">Morceaux notés</div>
-                </div>
-            </div>
-
-            <form method="POST" enctype="multipart/form-data" action="{{ url_for('profile_config') }}">
-                <!-- Section Avatar -->
-                <div class="avatar-section">
-                    {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="avatar-preview" id="avatarPreview">
-                    {% else %}
-                        <div class="avatar-placeholder" id="avatarPlaceholder">
-                            {{ current_user.username[0].upper() if current_user.username else '?' }}
-                        </div>
-                    {% endif %}
-                    
-                    <div class="form-group">
-                        <label for="avatar">Photo de profil</label>
-                        <input type="file" id="avatar" name="avatar" accept="image/*" onchange="previewAvatar(this)">
-                        <button type="button" class="btn-secondary" onclick="removeAvatar()">Supprimer la photo</button>
-                    </div>
-                </div>
-
-                <!-- Informations personnelles -->
-                <div class="form-group">
-                    <label for="username">Nom d'utilisateur *</label>
-                    <input type="text" id="username" name="username" value="{{ current_user.username or '' }}" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="full_name">Nom complet</label>
-                    <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name or '' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ current_user.email or '' }}" readonly>
-                    <small style="color: #718096;">L'email ne peut pas être modifié</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="bio">Biographie</label>
-                    <textarea id="bio" name="bio" rows="3" placeholder="Parlez-nous de vos goûts musicaux...">{{ current_user.bio or '' }}</textarea>
-                </div>
-
-                <!-- Préférences -->
-                <div class="form-group">
-                    <label for="favorite_genres">Genres musicaux préférés</label>
-                    <input type="text" id="favorite_genres" name="favorite_genres" 
-                           value="{{ current_user.favorite_genres or '' }}" 
-                           placeholder="Rock, Pop, Jazz, Electro...">
-                </div>
-
-                <div class="form-group">
-                    <label for="location">Localisation</label>
-                    <input type="text" id="location" name="location" 
-                           value="{{ current_user.location or '' }}" 
-                           placeholder="Paris, France">
-                </div>
-
-                <button type="submit" class="btn-primary">💾 Sauvegarder les modifications</button>
-            </form>
-
-            {% if messages %}
-                <div class="messages" style="margin-top: 1rem;">
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.type }}">{{ message.text }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+          </div>
         </div>
+      </div>
+
+      <!-- Section Informations personnelles -->
+      <div class="config-section">
+        <h2 class="section-title">
+          <i class="fas fa-info-circle"></i>
+          Informations personnelles
+        </h2>
+        
+        <div class="form-group">
+          <label for="username">Nom d'utilisateur</label>
+          <input type="text" id="username" name="username" 
+                 value="{{ user.username if user else '' }}" 
+                 placeholder="Votre nom d'utilisateur">
+        </div>
+        
+        <div class="form-group">
+          <label for="full_name">Nom complet</label>
+          <input type="text" id="full_name" name="full_name" 
+                 value="{{ user.full_name if user else '' }}" 
+                 placeholder="Votre nom complet">
+        </div>
+        
+        <div class="form-group">
+          <label for="bio">Biographie</label>
+          <textarea id="bio" name="bio" 
+                    placeholder="Parlez-nous de vos goûts musicaux...">{{ user.bio if user else '' }}</textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="location">Localisation</label>
+          <input type="text" id="location" name="location" 
+                 value="{{ user.location if user else '' }}" 
+                 placeholder="Votre ville, pays">
+        </div>
+        
+        <div class="form-group">
+          <label for="favorite_genres">Genres musicaux préférés</label>
+          <input type="text" id="favorite_genres" name="favorite_genres" 
+                 value="{{ user.favorite_genres if user else '' }}" 
+                 placeholder="Rock, Pop, Hip-Hop, Jazz...">
+        </div>
+      </div>
+
+      <!-- Section Thème -->
+      <div class="config-section">
+        <h2 class="section-title">
+          <i class="fas fa-palette"></i>
+          Apparence
+        </h2>
+        
+        <div class="form-group">
+          <label>Choisissez votre thème</label>
+          <div class="theme-selector">
+            <div class="theme-option active" data-theme="dark" onclick="selectTheme('dark')">
+              <div class="theme-preview dark"></div>
+              <h4>Thème sombre</h4>
+              <p>Mode nuit pour vos yeux</p>
+            </div>
+            
+            <div class="theme-option" data-theme="light" onclick="selectTheme('light')">
+              <div class="theme-preview light"></div>
+              <h4>Thème clair</h4>
+              <p>Mode jour classique</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section Statistiques -->
+      <div class="config-section">
+        <h2 class="section-title">
+          <i class="fas fa-chart-bar"></i>
+          Vos statistiques
+        </h2>
+        
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-number">{{ user_stats.total_ratings or 0 }}</span>
+            <span class="stat-label">Notes données</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="stat-number">{{ "%.1f"|format(user_stats.avg_rating or 0) }}</span>
+            <span class="stat-label">Note moyenne</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="stat-number">{{ user_stats.tracks_rated or 0 }}</span>
+            <span class="stat-label">Morceaux notés</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        function previewAvatar(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('avatarPreview');
-                    const placeholder = document.getElementById('avatarPlaceholder');
-                    
-                    if (preview) {
-                        preview.src = e.target.result;
-                    } else {
-                        // Remplacer le placeholder par une image
-                        placeholder.innerHTML = `<img src="${e.target.result}" alt="Avatar" class="avatar-preview" id="avatarPreview">`;
-                    }
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save"></i>
+        Sauvegarder les modifications
+      </button>
+      
+      <a href="{{ url_for('home') }}" class="btn btn-secondary">
+        <i class="fas fa-times"></i>
+        Annuler
+      </a>
+    </div>
+  </form>
+</div>
 
-        function removeAvatar() {
-            document.getElementById('avatar').value = '';
-            const preview = document.getElementById('avatarPreview');
-            const placeholder = document.getElementById('avatarPlaceholder');
-            
-            if (preview) {
-                preview.remove();
-            }
-            
-            placeholder.innerHTML = '{{ current_user.username[0].upper() if current_user.username else "?" }}';
-        }
-    </script>
-</body>
-</html>
+<script>
+// Prévisualisation de l'avatar
+function previewAvatar(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const preview = document.getElementById('avatarPreview');
+      if (preview.tagName === 'IMG') {
+        preview.src = e.target.result;
+      } else {
+        // Remplacer le placeholder par une image
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'avatar-preview';
+        img.id = 'avatarPreview';
+        preview.parentNode.replaceChild(img, preview);
+      }
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Sélection du thème
+function selectTheme(theme) {
+  // Retirer la classe active de tous les thèmes
+  document.querySelectorAll('.theme-option').forEach(option => {
+    option.classList.remove('active');
+  });
+  
+  // Ajouter la classe active au thème sélectionné
+  document.querySelector(`[data-theme="${theme}"]`).classList.add('active');
+  
+  // Appliquer le thème
+  if (theme === 'light') {
+    document.documentElement.style.setProperty('--bg', '#ffffff');
+    document.documentElement.style.setProperty('--fg', '#333333');
+    document.documentElement.style.setProperty('--card-bg', '#f8f9fa');
+    document.documentElement.style.setProperty('--input-bg', '#ffffff');
+  } else {
+    document.documentElement.style.setProperty('--bg', '#1a1a1a');
+    document.documentElement.style.setProperty('--fg', '#ffffff');
+    document.documentElement.style.setProperty('--card-bg', '#2d2d2d');
+    document.documentElement.style.setProperty('--input-bg', '#3d3d3d');
+  }
+  
+  // Sauvegarder le préférence
+  localStorage.setItem('theme', theme);
+}
+
+// Charger le thème sauvegardé
+document.addEventListener('DOMContentLoaded', function() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  selectTheme(savedTheme);
+});
+
+// Validation du formulaire
+document.querySelector('form').addEventListener('submit', function(e) {
+  const username = document.getElementById('username').value.trim();
+  const fullName = document.getElementById('full_name').value.trim();
+  
+  if (!username && !fullName) {
+    e.preventDefault();
+    alert('Veuillez renseigner au moins un nom d\'utilisateur ou un nom complet.');
+    return;
+  }
+  
+  // Notification de sauvegarde
+  showNotification('Profil en cours de mise à jour...', 'info');
+});
+
+// Fonction de notification
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+    max-width: 300px;
+  `;
+  
+  switch(type) {
+    case 'success':
+      notification.style.background = '#4caf50';
+      break;
+    case 'error':
+      notification.style.background = '#f44336';
+      break;
+    default:
+      notification.style.background = '#2196f3';
+  }
+  
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Animations CSS pour les notifications
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(style);
+</script>
+
+{% endblock %}

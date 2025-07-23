@@ -36,11 +36,29 @@ class SupabaseService:
                 "email": email,
                 "password": password,
                 "options": {
+                    "email_redirect_to": None,  # Désactive la redirection d'email
                     "data": {
                         "full_name": full_name
                     }
                 }
             })
+            
+            # Si l'utilisateur est créé, marquer l'email comme confirmé dans la table profiles
+            if response.user:
+                try:
+                    # Créer ou mettre à jour le profil avec email confirmé
+                    self.client.table("profiles").upsert({
+                        "id": response.user.id,
+                        "email": email,
+                        "full_name": full_name,
+                        "username": full_name or email.split('@')[0],  # Username par défaut
+                        "is_verified": True,  # Marquer comme vérifié par défaut
+                        "created_at": "now()",
+                        "updated_at": "now()"
+                    }).execute()
+                except Exception as profile_error:
+                    print(f"Erreur lors de la création du profil: {profile_error}")
+            
             return {"success": True, "user": response.user, "session": response.session}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -68,7 +86,28 @@ class SupabaseService:
         """Récupérer le profil utilisateur"""
         try:
             response = self.client.table("profiles").select("*").eq("id", user_id).single().execute()
-            return response.data if response.data else None
+            
+            if response.data:
+                profile = response.data
+                
+                # S'assurer que le username est défini selon les règles demandées
+                if not profile.get('username'):
+                    # Si pas de username, utiliser full_name ou une partie de l'email
+                    username = profile.get('full_name') or profile.get('email', '').split('@')[0]
+                    
+                    # Mettre à jour le profil
+                    try:
+                        self.client.table("profiles").update({
+                            "username": username
+                        }).eq("id", user_id).execute()
+                        profile['username'] = username
+                    except Exception as update_error:
+                        print(f"Erreur lors de la mise à jour du username: {update_error}")
+                        profile['username'] = username  # Au moins pour cette session
+                
+                return profile
+            
+            return None
         except Exception as e:
             print(f"Erreur lors de la récupération du profil: {e}")
             return None
@@ -194,55 +233,132 @@ class SupabaseService:
             print(f"Erreur lors de la création de l'utilisateur: {e}")
             return None
     
-    def authenticate_user(self, email: str, password: str) -> Optional[Dict]:
-        """Authentifier un utilisateur"""
+    def authenticate_user(self, identifier: str, password: str) -> Optional[Dict]:
+        """Authentifier un utilisateur avec email ou username"""
         try:
-            # Utiliser Supabase Auth pour l'authentification
-            auth_response = self.client.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
+            # Déterminer si l'identifiant est un email ou un username
+            is_email = '@' in identifier
+            
+            if is_email:
+                # Authentification directe avec email
+                auth_response = self.client.auth.sign_in_with_password({
+                    "email": identifier,
+                    "password": password
+                })
+            else:
+                # Chercher l'email associé au username
+                profile_response = self.client.table("profiles").select("email").eq("username", identifier).execute()
+                if not profile_response.data:
+                    return None
+                
+                email = profile_response.data[0]['email']
+                # Authentification avec l'email trouvé
+                auth_response = self.client.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
             
             if auth_response.user:
-                # Récupérer le profil utilisateur
+                # Récupérer le profil utilisateur complet
                 profile_response = self.client.table("profiles").select("*").eq("id", auth_response.user.id).execute()
                 if profile_response.data:
-                    return profile_response.data[0]
+                    profile_data = profile_response.data[0]
+                    
+                    # S'assurer que le username est défini correctement
+                    if not profile_data.get('username'):
+                        # Si pas de username, utiliser full_name ou une partie de l'email
+                        username = profile_data.get('full_name') or profile_data.get('email', '').split('@')[0]
+                        # Mettre à jour le profil
+                        self.client.table("profiles").update({
+                            "username": username
+                        }).eq("id", auth_response.user.id).execute()
+                        profile_data['username'] = username
+                    
+                    return profile_data
             
             return None
         except Exception as e:
-            print(f"Erreur lors de l'authentification: {e}")
+            error_msg = str(e)
+            print(f"Erreur lors de l'authentification: {error_msg}")
+            
+            # Si l'erreur est liée à l'email non confirmé, essayer de confirmer automatiquement
+            if "Email not confirmed" in error_msg:
+                try:
+                    # Forcer la connexion en marquant l'email comme confirmé
+                    # Note: Cette approche nécessite des privilèges admin sur Supabase
+                    print("Tentative de connexion forcée...")
+                    return None  # Pour l'instant on retourne None, mais on pourrait implémenter une logique spéciale
+                except Exception:
+                    pass
+            
             return None
     
-    def create_track(self, track_data: Dict) -> Optional[str]:
-        """Créer une piste si elle n'existe pas"""
+    def create_track(self, track_data: Dict, user_id: str = None) -> Optional[str]:
+        """Créer une piste si elle n'existe pas - Version compatible avec le schéma actuel"""
         try:
             # Vérifier si la piste existe déjà
             response = self.client.table("tracks").select("id").eq("artist", track_data['artist']).eq("title", track_data['title']).execute()
             
             if response.data:
+                print(f"DEBUG CREATE_TRACK: Piste existante trouvée - ID: {response.data[0]['id']}")
                 return response.data[0]['id']
             
-            # Créer la nouvelle piste
+            # Créer la nouvelle piste avec seulement les colonnes qui existent
             new_track = {
-                "id": str(uuid.uuid4()),
                 "title": track_data['title'],
-                "artist": track_data['artist'],
-                "album": track_data.get('album'),
-                "duration": track_data.get('duration'),
-                "deezer_id": track_data.get('deezer_id'),
-                "preview_url": track_data.get('preview_url'),
-                "cover_url": track_data.get('cover_url'),
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "artist": track_data['artist']
             }
             
+            # Ajouter les colonnes optionnelles qui existent réellement dans votre schéma
+            optional_fields = [
+                ("album", track_data.get('album')),
+                ("duration", track_data.get('duration')),  
+                ("deezer_id", track_data.get('deezer_id')),
+                ("preview_url", track_data.get('preview_url')),
+                ("image_url", track_data.get('cover_url') or track_data.get('image_url'))
+            ]
+            
+            for field_name, field_value in optional_fields:
+                if field_value is not None and field_value != "":
+                    new_track[field_name] = field_value
+            
+            print(f"DEBUG CREATE_TRACK: Tentative d'insertion avec: {new_track}")
+            
+            # Insertion directe sans created_by
             response = self.client.table("tracks").insert(new_track).execute()
             if response.data:
-                return response.data[0]['id']
-            return None
+                track_id = response.data[0].get('id')
+                print(f"DEBUG CREATE_TRACK: Succès - Track ID: {track_id}")
+                return track_id
+            else:
+                print(f"DEBUG CREATE_TRACK: Aucune donnée retournée")
+                return None
+                
         except Exception as e:
-            print(f"Erreur lors de la création de la piste: {e}")
+            print(f"DEBUG CREATE_TRACK: Erreur lors de l'insertion: {e}")
+            
+            # Si l'erreur mentionne une colonne inexistante, essayer avec le minimum
+            if 'does not exist' in str(e) or 'column' in str(e).lower():
+                print("DEBUG CREATE_TRACK: Tentative avec colonnes minimales seulement...")
+                try:
+                    minimal_track = {
+                        "title": track_data['title'],
+                        "artist": track_data['artist']
+                    }
+                    
+                    response = self.client.table("tracks").insert(minimal_track).execute()
+                    if response.data:
+                        track_id = response.data[0].get('id')
+                        print(f"DEBUG CREATE_TRACK: Succès minimal - Track ID: {track_id}")
+                        return track_id
+                except Exception as e2:
+                    print(f"DEBUG CREATE_TRACK: Échec même avec colonnes minimales: {e2}")
+            
+            # Instructions pour résoudre le problème RLS
+            if 'row-level security' in str(e).lower():
+                print("DEBUG CREATE_TRACK: Erreur RLS - Consultez GUIDE_SUPABASE_RLS.md")
+                print("SOLUTION RAPIDE: ALTER TABLE tracks DISABLE ROW LEVEL SECURITY;")
+            
             return None
     
     def get_user_stats(self) -> Dict:
@@ -312,19 +428,61 @@ class SupabaseService:
     def get_top_rated_tracks(self, limit: int = 20) -> List[Dict]:
         """Récupérer les pistes les mieux notées"""
         try:
-            response = self.client.table("track_stats").select("*, tracks(*)").order("average_rating", desc=True).limit(limit).execute()
+            # Essayer d'abord la fonction RPC si elle existe
+            try:
+                response = self.client.rpc('get_top_rated_tracks_v2', {
+                    'limit_count': limit
+                }).execute()
+                
+                if response.data:
+                    return response.data
+            except Exception as e:
+                print(f"RPC fonction non disponible: {e}")
+            
+            # Fallback : requête directe avec join
+            tracks_response = self.client.table("tracks").select("*, ratings(rating)").execute()
             
             tracks = []
-            for stat in response.data:
-                if stat.get('tracks'):
-                    track = stat['tracks']
-                    track['avg_rating'] = stat['average_rating']
-                    track['rating_count'] = stat['total_ratings']
-                    tracks.append(track)
+            track_stats = {}
+            
+            # Calculer les statistiques pour chaque track
+            for track in tracks_response.data or []:
+                track_id = track['id']
+                ratings = track.get('ratings', [])
+                
+                if ratings:
+                    rating_values = [r['rating'] for r in ratings if r['rating'] is not None]
+                    if rating_values:
+                        avg_rating = sum(rating_values) / len(rating_values)
+                        track_stats[track_id] = {
+                            'track': track,
+                            'avg_rating': avg_rating,
+                            'rating_count': len(rating_values)
+                        }
+            
+            # Trier par note moyenne et nombre de votes
+            sorted_tracks = sorted(
+                track_stats.values(),
+                key=lambda x: (x['avg_rating'], x['rating_count']),
+                reverse=True
+            )
+            
+            # Formater le résultat
+            for stat in sorted_tracks[:limit]:
+                track = stat['track']
+                track['avg_rating'] = round(stat['avg_rating'], 1)
+                track['rating_count'] = stat['rating_count']
+                # Compatibilité avec le template
+                track['average'] = track['avg_rating']
+                track['count'] = track['rating_count']
+                tracks.append(track)
             
             return tracks
+            
         except Exception as e:
             print(f"Erreur lors de la récupération des top pistes: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     # === GESTION DES MORCEAUX ===
@@ -413,8 +571,13 @@ class SupabaseService:
     def add_rating_by_id(self, user_id: str, track_id: str, rating: int, comment: str = None) -> Dict:
         """Ajouter ou mettre à jour une notation (version originale)"""
         try:
+            print(f"DEBUG ADD_RATING: user_id={user_id}, track_id={track_id}, rating={rating}")
+            
             if not (1 <= rating <= 5):
                 return {"success": False, "error": "La note doit être entre 1 et 5"}
+            
+            # Vérifier si une notation existe déjà
+            existing_rating = self.get_user_rating_by_id(user_id, track_id)
             
             rating_data = {
                 "user_id": user_id,
@@ -424,11 +587,25 @@ class SupabaseService:
                 "updated_at": datetime.utcnow().isoformat()
             }
             
-            # Utiliser upsert pour créer ou mettre à jour
-            response = self.client.table("ratings").upsert(rating_data).execute()
+            print(f"DEBUG ADD_RATING: rating_data={rating_data}")
+            print(f"DEBUG ADD_RATING: existing_rating={existing_rating}")
+            
+            if existing_rating:
+                # Mettre à jour la notation existante
+                response = self.client.table("ratings").update(rating_data).eq("user_id", user_id).eq("track_id", track_id).execute()
+                print(f"DEBUG ADD_RATING: update response={response}")
+            else:
+                # Créer une nouvelle notation
+                rating_data["created_at"] = datetime.utcnow().isoformat()
+                response = self.client.table("ratings").insert(rating_data).execute()
+                print(f"DEBUG ADD_RATING: insert response={response}")
+            
             return {"success": True, "data": response.data}
             
         except Exception as e:
+            print(f"DEBUG ADD_RATING: Exception={str(e)}")
+            import traceback
+            traceback.print_exc()
             return {"success": False, "error": str(e)}
     
     def get_user_rating_by_id(self, user_id: str, track_id: str) -> Optional[Dict]:
@@ -450,12 +627,56 @@ class SupabaseService:
             return []
     
     def get_user_ratings(self, user_id: str, limit: int = 50) -> List[Dict]:
-        """Récupérer toutes les notations d'un utilisateur"""
+        """Récupérer toutes les notations d'un utilisateur avec les informations des tracks"""
         try:
-            response = self.client.from_("user_ratings").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
-            return response.data if response.data else []
+            # Récupérer les ratings avec les informations des tracks
+            response = self.client.table("ratings").select(
+                "*, tracks(*)"
+            ).eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+            
+            if not response.data:
+                return []
+            
+            # Reformater les données pour le template
+            tracks_with_ratings = []
+            for rating in response.data:
+                if rating.get('tracks'):
+                    track = rating['tracks']
+                    track_id = track['id']
+                    
+                    # Ajouter la note de l'utilisateur à l'objet track
+                    track['user_rating'] = rating['rating']
+                    track['rating_date'] = rating['created_at']
+                    track['comment'] = rating.get('comment', '')
+                    track['timestamp'] = rating['created_at']
+                    
+                    # Calculer les statistiques globales pour ce track
+                    try:
+                        global_ratings_response = self.client.table("ratings").select("rating").eq("track_id", track_id).execute()
+                        
+                        if global_ratings_response.data:
+                            global_ratings = [r['rating'] for r in global_ratings_response.data if r['rating'] is not None]
+                            if global_ratings:
+                                track['global_average'] = sum(global_ratings) / len(global_ratings)
+                                track['global_count'] = len(global_ratings)
+                            else:
+                                track['global_average'] = 0
+                                track['global_count'] = 0
+                        else:
+                            track['global_average'] = 0
+                            track['global_count'] = 0
+                    except Exception as e:
+                        print(f"Erreur calcul stats globales pour track {track_id}: {e}")
+                        track['global_average'] = 0
+                        track['global_count'] = 0
+                    
+                    tracks_with_ratings.append(track)
+            
+            return tracks_with_ratings
         except Exception as e:
             print(f"Erreur lors de la récupération des notations utilisateur: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     # === STATISTIQUES ===

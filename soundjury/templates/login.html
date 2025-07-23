@@ -15,10 +15,10 @@
         <form method="POST" class="auth-form">
             <div class="form-group">
                 <label for="email">
-                    <i class="fas fa-envelope"></i> Adresse email
+                    <i class="fas fa-user"></i> Email ou pseudo
                 </label>
-                <input type="email" id="email" name="email" required 
-                       placeholder="votre@email.com" value="{{ request.form.email or '' }}"
+                <input type="text" id="email" name="email" required 
+                       placeholder="votre@email.com ou votre_pseudo" value="{{ request.form.email or '' }}"
                        class="form-control">
             </div>
             

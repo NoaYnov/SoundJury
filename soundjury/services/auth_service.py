@@ -5,9 +5,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
-from models.user import User
-from config import Config
-from services.supabase_service import SupabaseService
+from ..models.user import User
+from ..core.config import Config
+from .supabase_service import SupabaseService
 
 class AuthService:
     """Service d'authentification avec gestion des utilisateurs via Supabase"""
@@ -41,21 +41,22 @@ class AuthService:
         except Exception as e:
             return False, f"Erreur lors de l'enregistrement: {str(e)}"
     
-    def login_user(self, email: str, password: str) -> tuple[bool, str, Optional[User]]:
-        """Connecte un utilisateur"""
+    def login_user(self, identifier: str, password: str) -> tuple[bool, str, Optional[User]]:
+        """Connecte un utilisateur avec email ou username"""
         try:
-            user_data = self.supabase_service.authenticate_user(email, password)
+            user_data = self.supabase_service.authenticate_user(identifier, password)
             if user_data:
                 # Créer un objet User à partir des données Supabase
                 user = User(
+                    id=user_data.get('id'),  # ID Supabase
                     email=user_data['email'],
-                    username=user_data['username'],
+                    username=user_data.get('username', user_data.get('full_name', user_data['email'].split('@')[0])),
                     password_hash='',  # Pas de hash local avec Supabase Auth
                     is_verified=user_data.get('is_verified', True)
                 )
                 return True, "Connexion réussie", user
             else:
-                return False, "Email ou mot de passe incorrect", None
+                return False, "Identifiant ou mot de passe incorrect", None
                 
         except Exception as e:
             return False, f"Erreur lors de la connexion: {str(e)}", None

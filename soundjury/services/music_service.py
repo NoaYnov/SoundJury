@@ -5,8 +5,8 @@ import requests
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from typing import List, Dict, Any, Optional
-from models.track import Track, TrackDetails
-from config import Config
+from ..models.track import Track, TrackDetails
+from ..core.config import Config
 
 class MusicService:
     """Service unifié pour les APIs musicales"""

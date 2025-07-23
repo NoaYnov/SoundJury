@@ -3,7 +3,8 @@ SoundJury - Application principale
 Architecture professionnelle avec classes et services
 """
 import os
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
+from datetime import timedelta
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 
@@ -12,20 +13,17 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path)
 
 # Configuration
-from config import config
+from .core.config import config
 
 # Modèles
-from models.user import User
-from models.track import Track, TrackDetails
-from models.rating import RatingManager
+from .models.user import User
+from .models.track import Track, TrackDetails
+from .models.rating import RatingManager
 
 # Services
-from services.auth_service import AuthService
-from services.deezer_service import DeezerMusicService
-from services.supabase_service import SupabaseService
-
-# Utilitaires
-from utils import EmailService
+from .services.auth_service import AuthService
+from .services.deezer_service import DeezerMusicService
+from .services.supabase_service import SupabaseService
 
 class SoundJuryApp:
     """Application principale SoundJury"""
@@ -47,6 +45,11 @@ class SoundJuryApp:
         self.login_manager.init_app(self.app)
         self.login_manager.login_view = 'login'
         self.login_manager.login_message = 'Veuillez vous connecter pour accéder à cette page.'
+        self.login_manager.session_protection = "strong"
+        self.login_manager.remember_cookie_duration = None  # Session permanente
+        
+        # Configurer la session
+        self.app.permanent_session_lifetime = timedelta(hours=24)
         
         # Configurer les routes
         self._setup_routes()
@@ -55,8 +58,33 @@ class SoundJuryApp:
     def _setup_login_manager(self):
         """Configure Flask-Login"""
         @self.login_manager.user_loader
-        def load_user(user_email):
-            return self.auth_service.get_user(user_email)
+        def load_user(user_id):
+            """Charger un utilisateur par son ID (Supabase UUID ou email)"""
+            try:
+                # Essayer de récupérer le profil par ID
+                profile_data = self.supabase_service.get_user_profile(user_id)
+                if profile_data:
+                    return User(
+                        id=profile_data.get('id'),
+                        email=profile_data['email'],
+                        username=profile_data.get('username', profile_data.get('full_name', profile_data['email'].split('@')[0])),
+                        is_verified=profile_data.get('is_verified', True)
+                    )
+                
+                # Si pas trouvé par ID, essayer par email (fallback)
+                user_data = self.supabase_service.get_user(user_id)
+                if user_data:
+                    return User(
+                        id=user_data.get('id'),
+                        email=user_data['email'],
+                        username=user_data.get('username', user_data.get('full_name', user_data['email'].split('@')[0])),
+                        is_verified=user_data.get('is_verified', True)
+                    )
+                
+                return None
+            except Exception as e:
+                print(f"Erreur lors du chargement de l'utilisateur {user_id}: {e}")
+                return None
     
     def _setup_routes(self):
         """Configure toutes les routes de l'application"""
@@ -64,6 +92,10 @@ class SoundJuryApp:
         @self.app.route("/")
         def home():
             """Page d'accueil avec morceaux tendance"""
+            print(f"DEBUG HOME: current_user.is_authenticated = {current_user.is_authenticated}")
+            if current_user.is_authenticated:
+                print(f"DEBUG HOME: User connecté - ID: {current_user.get_id()}, Email: {current_user.email}")
+            
             tracks = self.music_service.get_trending_tracks(limit=10)
             stats = self.supabase_service.get_global_stats()
             
@@ -147,20 +179,36 @@ class SoundJuryApp:
                 return jsonify({"error": str(e)}), 500
         
         @self.app.route("/rate", methods=["POST"])
+        @self.app.route("/api/rate", methods=["POST"])
         @login_required
         def rate():
             """API pour noter un morceau"""
             try:
+                print(f"DEBUG RATE: User connecté - ID: {current_user.get_id()}, Email: {current_user.email}")
+                
                 if not current_user.is_verified:
                     return jsonify({"success": False, "error": "Compte non vérifié"}), 403
                 
                 data = request.get_json()
+                if not data:
+                    return jsonify({"success": False, "error": "Aucune donnée JSON reçue"}), 400
+                
                 artist = data.get("artist")
                 title = data.get("title")
                 rating = data.get("rating")
                 
+                print(f"DEBUG RATE: Données reçues - Artist: {artist}, Title: {title}, Rating: {rating}")
+                
                 if not all([artist, title, rating]):
-                    return jsonify({"success": False, "error": "Données manquantes"}), 400
+                    return jsonify({"success": False, "error": "Données manquantes (artist, title, rating requis)"}), 400
+                
+                # Valider la note
+                try:
+                    rating_value = int(rating)
+                    if not 1 <= rating_value <= 5:
+                        return jsonify({"success": False, "error": "La note doit être entre 1 et 5"}), 400
+                except (ValueError, TypeError):
+                    return jsonify({"success": False, "error": "Format de note invalide"}), 400
                 
                 # Créer ou mettre à jour la piste dans Supabase
                 track_data = {
@@ -173,32 +221,43 @@ class SoundJuryApp:
                     'cover_url': data.get('cover_url')
                 }
                 
-                try:
-                    # Ajouter la piste si elle n'existe pas
-                    track_id = self.supabase_service.create_track(track_data)
-                    
-                    # Ajouter la notation
-                    success = self.supabase_service.add_rating(
-                        current_user.email, track_id, int(rating)
-                    )
-                    
-                    if success:
-                        # Récupérer les nouvelles statistiques
-                        rating_info = self.supabase_service.get_track_stats(artist, title)
-                        return jsonify({
-                            "success": True,
-                            "message": "Notation ajoutée avec succès",
-                            "avg_rating": rating_info.get('average_rating', 0),
-                            "count": rating_info.get('total_ratings', 0)
-                        })
-                    else:
-                        return jsonify({"success": False, "error": "Erreur lors de l'ajout de la notation"}), 500
+                print(f"DEBUG RATE: Création/recherche de la piste...")
+                
+                # Ajouter la piste si elle n'existe pas (avec user_id pour RLS)
+                user_id = current_user.get_id()
+                track_id = self.supabase_service.create_track(track_data, user_id)
+                
+                if not track_id:
+                    return jsonify({"success": False, "error": "Impossible de créer ou trouver la piste"}), 500
+                
+                print(f"DEBUG RATE: Track ID trouvé: {track_id}")
+                
+                # Ajouter la notation avec l'ID utilisateur
+                user_id = current_user.get_id()
+                rating_result = self.supabase_service.add_rating_by_id(
+                    user_id, track_id, rating_value
+                )
+                
+                print(f"DEBUG RATE: Résultat notation: {rating_result}")
+                
+                if rating_result.get("success"):
+                    # Récupérer les nouvelles statistiques
+                    rating_info = self.supabase_service.get_track_stats(artist, title)
+                    return jsonify({
+                        "success": True,
+                        "message": "Notation ajoutée avec succès",
+                        "avg_rating": rating_info.get('average_rating', 0) if rating_info else 0,
+                        "count": rating_info.get('total_ratings', 0) if rating_info else 0
+                    })
+                else:
+                    error_msg = rating_result.get("error", "Erreur lors de l'ajout de la notation")
+                    return jsonify({"success": False, "error": error_msg}), 500
                         
-                except Exception as e:
-                    return jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500
-                    
             except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
+                print(f"DEBUG RATE: Exception - {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({"success": False, "error": f"Erreur serveur: {str(e)}"}), 500
         
         @self.app.route("/register", methods=["GET", "POST"])
         def register():
@@ -226,20 +285,30 @@ class SoundJuryApp:
         def login():
             """Page de connexion"""
             if request.method == "POST":
-                email = request.form.get("email", "").strip()
+                identifier = request.form.get("email", "").strip()  # On garde 'email' comme nom de champ pour la compatibilité
                 password = request.form.get("password", "").strip()
                 
-                if not email or not password:
-                    flash("Email et mot de passe requis", "error")
+                if not identifier or not password:
+                    flash("Identifiant et mot de passe requis", "error")
                     return render_template("login.html")
                 
-                success, message, user = self.auth_service.login_user(email, password)
+                success, message, user = self.auth_service.login_user(identifier, password)
                 
-                if success:
-                    login_user(user, remember=True)
+                if success and user:
+                    print(f"DEBUG: Connexion réussie pour user ID: {user.get_id()}, email: {user.email}, username: {user.username}")
+                    
+                    # Marquer la session comme permanente
+                    session.permanent = True
+                    
+                    login_result = login_user(user, remember=True)
+                    print(f"DEBUG: login_user result: {login_result}")
+                    print(f"DEBUG: current_user après login: {current_user}")
+                    print(f"DEBUG: current_user.is_authenticated: {current_user.is_authenticated}")
+                    
                     flash(message, "success")
                     return redirect(url_for("home"))
                 else:
+                    print(f"DEBUG: Échec de connexion - Success: {success}, Message: {message}, User: {user}")
                     flash(message, "error")
             
             return render_template("login.html")
@@ -281,7 +350,8 @@ class SoundJuryApp:
         @login_required
         def my_ratings():
             """Page des morceaux notés par l'utilisateur"""
-            tracks = self.supabase_service.get_user_ratings(current_user.email)
+            user_id = current_user.get_id()
+            tracks = self.supabase_service.get_user_ratings(user_id)
             return render_template("my_ratings.html", tracks=tracks)
         
         @self.app.route("/stats")
@@ -293,7 +363,7 @@ class SoundJuryApp:
         @login_required
         def profile_config():
             """Page de configuration du profil"""
-            user_id = current_user.id if hasattr(current_user, 'id') else current_user.email
+            user_id = current_user.get_id()
             user = self.supabase_service.get_user_profile(user_id)
             
             if not user:
@@ -341,10 +411,11 @@ class SoundJuryApp:
             user_stats = self.supabase_service.get_user_statistics(user_id)
             
             return render_template('profile_config.html', 
+                             user=user,
                              current_user=user, 
                              user_stats=user_stats, 
                              messages=messages)
-
+        
     def run(self, **kwargs):
         """Lance l'application"""
         self.app.run(**kwargs)

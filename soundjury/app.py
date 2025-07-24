@@ -4,6 +4,7 @@ Architecture professionnelle avec classes et services
 """
 import os
 from datetime import timedelta
+from dataclasses import replace
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -17,7 +18,7 @@ from .core.config import config
 
 # Modèles
 from .models.user import User
-from .models.track import Track, TrackDetails
+from .models.track import Track
 from .models.rating import RatingManager
 
 # Services
@@ -30,8 +31,10 @@ class SoundJuryApp:
     
     def __init__(self, config_name='default'):
         self.app = Flask(__name__)
-        self.config = config[config_name]
-        self.config.init_app(self.app)
+        self.config = config
+        
+        # Configuration de l'application Flask
+        self.app.config.from_object(self.config)
         
         # Initialiser les services
         self.supabase_service = SupabaseService()
@@ -54,6 +57,14 @@ class SoundJuryApp:
         # Configurer les routes
         self._setup_routes()
         self._setup_login_manager()
+        self._setup_template_context()
+    
+    def _setup_template_context(self):
+        """Configure le contexte global des templates"""
+        @self.app.context_processor
+        def inject_user():
+            """Injecter current_user dans tous les templates"""
+            return dict(current_user=current_user)
     
     def _setup_login_manager(self):
         """Configure Flask-Login"""
@@ -104,23 +115,26 @@ class SoundJuryApp:
             for track in tracks:
                 # Enrichir le track avec les données de notation
                 rating_info = self.supabase_service.get_track_stats(track.artist, track.title)
-                if rating_info:
-                    track.avg_rating = rating_info.get('average_rating', 0)
-                    track.rating_count = rating_info.get('total_ratings', 0)
-                else:
-                    track.avg_rating = 0
-                    track.rating_count = 0
+                avg_rating = rating_info.get('average_rating', 0.0) if rating_info else 0.0
+                rating_count = rating_info.get('total_ratings', 0) if rating_info else 0
                 
                 # Ajouter la note de l'utilisateur actuel si connecté
+                user_rating = None
                 if current_user.is_authenticated:
                     user_rating = self.supabase_service.get_user_rating(
                         current_user.email, track.artist, track.title
                     )
-                    track.user_rating = user_rating if user_rating else 0
-                else:
-                    track.user_rating = 0
+                    user_rating = user_rating if user_rating else 0
                 
-                tracks_with_ratings.append(track)
+                # Créer une nouvelle instance avec toutes les informations
+                track_with_rating = replace(
+                    track,
+                    avg_rating=avg_rating,
+                    rating_count=rating_count,
+                    user_rating=user_rating
+                )
+                
+                tracks_with_ratings.append(track_with_rating)
             
             return render_template("home.html", tracks=tracks_with_ratings, stats=stats)
         
@@ -139,9 +153,16 @@ class SoundJuryApp:
                     for track in search_results:
                         rating_info = self.supabase_service.get_track_stats(track.artist, track.title)
                         if rating_info:
-                            track.avg_rating = rating_info.get('average_rating', 0)
-                            track.rating_count = rating_info.get('total_ratings', 0)
-                        tracks.append(track)
+                            # Créer une nouvelle instance avec les informations de notation
+                            track_with_rating = replace(
+                                track,
+                                avg_rating=rating_info.get('average_rating', 0.0),
+                                rating_count=rating_info.get('total_ratings', 0)
+                            )
+                            tracks.append(track_with_rating)
+                        else:
+                            # La track garde ses valeurs par défaut (0.0, 0)
+                            tracks.append(track)
             
             return render_template("index.html", query=query, tracks=tracks)
         
@@ -383,6 +404,8 @@ class SoundJuryApp:
                         'location': request.form.get('location')
                     }
                     
+                    print(f"DEBUG: Données du formulaire reçues: {profile_data}")
+                    
                     # Gestion de l'upload d'avatar
                     if 'avatar' in request.files:
                         file = request.files['avatar']
@@ -397,12 +420,16 @@ class SoundJuryApp:
                                 messages.append({'type': 'error', 'text': 'Erreur lors de l\'upload de la photo'})
                     
                     # Mettre à jour le profil
-                    if self.supabase_service.update_user_profile(user_id, profile_data):
+                    print(f"DEBUG: Tentative de mise à jour pour user_id: {user_id}")
+                    update_success = self.supabase_service.update_user_profile(user_id, profile_data)
+                    
+                    if update_success:
                         messages.append({'type': 'success', 'text': 'Profil mis à jour avec succès!'})
                         # Récupérer les données mises à jour
                         user = self.supabase_service.get_user_profile(user_id)
+                        print(f"DEBUG: Profil après mise à jour: {user}")
                     else:
-                        messages.append({'type': 'error', 'text': 'Erreur lors de la mise à jour du profil'})
+                        messages.append({'type': 'error', 'text': 'Erreur lors de la mise à jour du profil - Vérifiez que les colonnes bio, location, favorite_genres existent dans la table profiles'})
                         
                 except Exception as e:
                     messages.append({'type': 'error', 'text': f'Erreur: {str(e)}'})
@@ -412,7 +439,6 @@ class SoundJuryApp:
             
             return render_template('profile_config.html', 
                              user=user,
-                             current_user=user, 
                              user_stats=user_stats, 
                              messages=messages)
         

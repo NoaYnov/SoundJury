@@ -1,3 +1,3 @@
 """
-Modèles métier pour SoundJury
+Modèles de données pour SoundJury
 """

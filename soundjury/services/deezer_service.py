@@ -49,12 +49,10 @@ class DeezerMusicService:
                     artist=track_data['artist']['name'],
                     album=track_data['album']['title'] if track_data.get('album') else '',
                     duration=self.format_duration(track_data.get('duration', 0)),
-                    image=track_data['album']['cover_medium'] if track_data.get('album') else track_data['artist'].get('picture_medium', ''),
-                    youtube_url=self._get_youtube_url(track_data['title'], track_data['artist']['name']),
-                    deezer_url=track_data.get('link', ''),
-                    preview_url=track_data.get('preview', ''),  # Ajout de l'URL de prévisualisation
-                    spotify_url='',
-                    artist_id=str(track_data['artist']['id'])
+                    image_url=track_data['album']['cover_medium'] if track_data.get('album') else track_data['artist'].get('picture_medium', ''),
+                    preview_url=track_data.get('preview', ''),
+                    deezer_id=str(track_data['id']),
+                    genres=[]
                 )
                 tracks.append(track)
             
@@ -89,12 +87,10 @@ class DeezerMusicService:
                     artist=track_data['artist']['name'],
                     album=track_data['album']['title'] if track_data.get('album') else '',
                     duration=self.format_duration(track_data.get('duration', 0)),
-                    image=track_data['album']['cover_medium'] if track_data.get('album') else track_data['artist'].get('picture_medium', ''),
-                    youtube_url=self._get_youtube_url(track_data['title'], track_data['artist']['name']),
-                    deezer_url=track_data.get('link', ''),
-                    preview_url=track_data.get('preview', ''),  # Ajout de l'URL de prévisualisation
-                    spotify_url='',
-                    artist_id=str(track_data['artist']['id'])
+                    image_url=track_data['album']['cover_medium'] if track_data.get('album') else track_data['artist'].get('picture_medium', ''),
+                    preview_url=track_data.get('preview', ''),
+                    deezer_id=str(track_data['id']),
+                    genres=[]
                 )
                 tracks.append(track)
             
@@ -117,11 +113,10 @@ class DeezerMusicService:
                 artist=data['artist']['name'],
                 album=data['album']['title'] if data.get('album') else '',
                 duration=self.format_duration(data.get('duration', 0)),
-                image=data['album']['cover_medium'] if data.get('album') else data['artist'].get('picture_medium', ''),
-                youtube_url=self._get_youtube_url(data['title'], data['artist']['name']),
-                deezer_url=data.get('link', ''),
-                spotify_url='',
-                artist_id=str(data['artist']['id'])
+                image_url=data['album']['cover_medium'] if data.get('album') else data['artist'].get('picture_medium', ''),
+                preview_url=data.get('preview', ''),
+                deezer_id=str(data['id']),
+                genres=[]
             )
         except Exception as e:
             print(f"Erreur lors de la récupération des détails: {e}")
@@ -202,11 +197,10 @@ class DeezerMusicService:
                 artist=data['artist'],
                 album=data['album'],
                 duration=self.format_duration(data['duration']),
-                image=data['image'],
-                youtube_url=data['youtube_url'],
-                deezer_url=data['deezer_url'],
-                spotify_url='',
-                artist_id=''
+                image_url=data['image'],
+                preview_url='',
+                deezer_id=data['id'],
+                genres=[]
             )
             tracks.append(track)
         

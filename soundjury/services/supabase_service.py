@@ -120,38 +120,125 @@ class SupabaseService:
             filtered_data = {k: v for k, v in profile_data.items() if k in allowed_fields and v is not None}
             
             if not filtered_data:
+                print("Aucune donnée à mettre à jour")
                 return True
             
             filtered_data['updated_at'] = datetime.utcnow().isoformat()
             
+            print(f"Mise à jour du profil {user_id} avec : {filtered_data}")
+            
             response = self.client.table("profiles").update(filtered_data).eq("id", user_id).execute()
-            return len(response.data) > 0
+            
+            if response.data:
+                print(f"Profil mis à jour avec succès: {len(response.data)} ligne(s)")
+                return True
+            else:
+                print("Aucune ligne mise à jour - utilisateur introuvable?")
+                return False
+                
         except Exception as e:
             print(f"Erreur lors de la mise à jour du profil: {e}")
+            print(f"Type d'erreur: {type(e).__name__}")
+            # Afficher plus de détails sur l'erreur
+            if hasattr(e, 'details'):
+                print(f"Détails: {e.details}")
+            if hasattr(e, 'message'):
+                print(f"Message: {e.message}")
             return False
     
     def upload_avatar(self, user_id: str, file_data: bytes, file_name: str) -> Optional[str]:
-        """Upload d'un avatar utilisateur"""
+        """Upload d'un avatar utilisateur avec création automatique du bucket"""
         try:
-            # Créer un nom de fichier unique
+            print(f"DEBUG: Début upload avatar pour user {user_id}, fichier: {file_name}")
+            
+            # Vérifier si le bucket existe (mais continuer même si ça échoue)
+            bucket_exists = False
+            try:
+                buckets = self.client.storage.list_buckets()
+                bucket_exists = any(bucket.name == "avatars" for bucket in buckets)
+                
+                if bucket_exists:
+                    print("DEBUG: Bucket 'avatars' détecté dans la liste")
+                else:
+                    print("DEBUG: Bucket 'avatars' non trouvé dans la liste, mais on essaie quand même l'upload...")
+                    
+            except Exception as bucket_error:
+                print(f"DEBUG: Impossible de lister les buckets: {bucket_error}")
+                print("DEBUG: On continue avec l'upload car le bucket existe peut-être...")
+            
+            # Créer un nom de fichier unique (sans préfixe "avatars/" car on est déjà dans le bucket)
             file_extension = file_name.split('.')[-1] if '.' in file_name else 'jpg'
-            unique_filename = f"avatars/{user_id}.{file_extension}"
+            unique_filename = f"{user_id}.{file_extension}"
             
-            # Upload vers Supabase Storage
-            response = self.client.storage.from_("avatars").upload(unique_filename, file_data, {"upsert": "true"})
+            # Corriger le content-type pour les fichiers JPG
+            if file_extension.lower() in ['jpg', 'jpeg']:
+                content_type = "image/jpeg"  # Supabase accepte image/jpeg, pas image/jpg
+            elif file_extension.lower() == 'png':
+                content_type = "image/png"
+            elif file_extension.lower() == 'gif':
+                content_type = "image/gif"
+            elif file_extension.lower() == 'webp':
+                content_type = "image/webp"
+            else:
+                content_type = "image/jpeg"  # Fallback
             
-            if response:
-                # Récupérer l'URL publique
+            print(f"DEBUG: Upload vers: {unique_filename} (content-type: {content_type})")
+            
+            # Upload vers Supabase Storage avec plusieurs tentatives
+            try:
+                # Première tentative : upsert
+                response = self.client.storage.from_("avatars").upload(
+                    unique_filename, 
+                    file_data, 
+                    {"upsert": "true", "content-type": content_type}
+                )
+                print(f"DEBUG: Réponse upload (upsert): {response}")
+                
+            except Exception as upload_error:
+                print(f"DEBUG: Erreur upload avec upsert: {upload_error}")
+                
+                # Deuxième tentative : supprimer puis upload
+                try:
+                    self.client.storage.from_("avatars").remove([unique_filename])
+                    print("DEBUG: Ancien fichier supprimé")
+                except:
+                    pass  # Le fichier n'existait peut-être pas
+                
+                # Nouvel upload
+                response = self.client.storage.from_("avatars").upload(
+                    unique_filename, 
+                    file_data,
+                    {"content-type": content_type}
+                )
+                print(f"DEBUG: Réponse upload (nouveau): {response}")
+            
+            # Récupérer l'URL publique
+            try:
                 avatar_url = self.client.storage.from_("avatars").get_public_url(unique_filename)
+                print(f"DEBUG: URL publique générée: {avatar_url}")
                 
-                # Mettre à jour le profil avec la nouvelle URL
-                self.update_user_profile(user_id, {"avatar_url": avatar_url})
-                
-                return avatar_url
+                if avatar_url:
+                    # Mettre à jour le profil avec la nouvelle URL
+                    update_success = self.update_user_profile(user_id, {"avatar_url": avatar_url})
+                    print(f"DEBUG: Mise à jour profil: {update_success}")
+                    
+                    if update_success:
+                        return avatar_url
+                    else:
+                        print("DEBUG: Échec mise à jour profil")
+                        return None
+                else:
+                    print("DEBUG: URL publique vide")
+                    return None
+                    
+            except Exception as url_error:
+                print(f"DEBUG: Erreur génération URL: {url_error}")
+                return None
             
-            return None
         except Exception as e:
-            print(f"Erreur lors de l'upload de l'avatar: {e}")
+            print(f"ERREUR: Upload avatar échoué: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def get_user_statistics(self, user_id: str) -> Dict:
@@ -382,20 +469,28 @@ class SupabaseService:
     def get_track_stats(self, artist: str, title: str) -> Optional[Dict]:
         """Récupérer les statistiques d'une piste par artiste et titre"""
         try:
-            # Récupérer la piste
+            # D'abord trouver l'ID de la piste
             track_response = self.client.table("tracks").select("id").eq("artist", artist).eq("title", title).execute()
             
             if not track_response.data:
                 return None
             
-            track_id = track_response.data[0]['id']
+            track_id = track_response.data[0]["id"]
             
-            # Récupérer les statistiques
-            stats_response = self.client.table("track_stats").select("*").eq("track_id", track_id).execute()
+            # Récupérer toutes les notations pour cette piste
+            ratings_response = self.client.table("ratings").select("rating").eq("track_id", track_id).execute()
             
-            if stats_response.data:
-                return stats_response.data[0]
-            return None
+            if not ratings_response.data:
+                return None
+            
+            ratings = [r["rating"] for r in ratings_response.data]
+            average_rating = sum(ratings) / len(ratings) if ratings else 0
+            total_ratings = len(ratings)
+            
+            return {
+                "average_rating": round(average_rating, 1),
+                "total_ratings": total_ratings
+            }
         except Exception as e:
             print(f"Erreur lors de la récupération des stats de piste: {e}")
             return None
@@ -403,7 +498,7 @@ class SupabaseService:
     def get_user_rating(self, user_email: str, artist: str, title: str) -> Optional[int]:
         """Récupérer la note d'un utilisateur pour une piste"""
         try:
-            # Récupérer l'utilisateur
+            # Récupérer l'utilisateur 
             user = self.get_user(user_email)
             if not user:
                 return None
@@ -413,7 +508,7 @@ class SupabaseService:
             if not track_response.data:
                 return None
             
-            track_id = track_response.data[0]['id']
+            track_id = track_response.data[0]["id"]
             
             # Récupérer la notation
             rating_response = self.client.table("ratings").select("rating").eq("user_id", user['id']).eq("track_id", track_id).execute()
@@ -693,36 +788,39 @@ class SupabaseService:
     def get_global_stats(self) -> Dict:
         """Récupérer les statistiques globales"""
         try:
-            # Compter le nombre total d'utilisateurs
-            users_count = self.client.table("profiles").select("*", count="exact").execute().count
-            
-            # Compter le nombre total de morceaux
-            tracks_count = self.client.table("tracks").select("*", count="exact").execute().count
-            
             # Compter le nombre total de notations
-            ratings_count = self.client.table("ratings").select("*", count="exact").execute().count
+            ratings_response = self.client.table("ratings").select("*").execute()
+            ratings_count = len(ratings_response.data) if ratings_response.data else 0
+            
+            # Compter les utilisateurs uniques
+            unique_users = len(set([r["user_id"] for r in ratings_response.data])) if ratings_response.data else 0
+            
+            # Compter les morceaux uniques 
+            unique_tracks = len(set([r["track_id"] for r in ratings_response.data])) if ratings_response.data else 0
             
             # Calculer la note moyenne globale
-            avg_response = self.client.table("ratings").select("rating").execute()
-            if avg_response.data:
-                ratings = [r["rating"] for r in avg_response.data]
+            if ratings_response.data:
+                ratings = [r["rating"] for r in ratings_response.data]
                 avg_rating = sum(ratings) / len(ratings) if ratings else 0
             else:
                 avg_rating = 0
             
+            # Debug: Afficher les infos
+            print(f"Stats debug - Ratings count: {ratings_count}, Unique users: {unique_users}, Unique tracks: {unique_tracks}, Avg rating: {avg_rating}")
+            
             return {
-                "users_count": users_count,
-                "tracks_count": tracks_count,
-                "ratings_count": ratings_count,
-                "average_rating": round(avg_rating, 2)
+                "total_tracks": unique_tracks,
+                "total_ratings": ratings_count,
+                "active_users": unique_users,
+                "avg_rating": round(avg_rating, 1)
             }
         except Exception as e:
             print(f"Erreur lors de la récupération des statistiques globales: {e}")
             return {
-                "users_count": 0,
-                "tracks_count": 0,
-                "ratings_count": 0,
-                "average_rating": 0.0
+                "total_tracks": 0,
+                "total_ratings": 0,
+                "active_users": 0,
+                "avg_rating": 0.0
             }
     
     # === UTILITAIRES ===

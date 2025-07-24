@@ -71,6 +71,9 @@
   
   .avatar-section {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   
   .avatar-preview {
@@ -79,7 +82,8 @@
     border-radius: 50%;
     object-fit: cover;
     border: 4px solid var(--accent);
-    margin-bottom: 1rem;
+    margin: 0 auto 1rem;
+    display: block;
   }
   
   .avatar-placeholder {
@@ -455,6 +459,23 @@
 // Prévisualisation de l'avatar
 function previewAvatar(input) {
   if (input.files && input.files[0]) {
+    const file = input.files[0];
+    
+    // Vérifier la taille du fichier (5MB max)
+    if (file.size > 5242880) {
+      showNotification('Fichier trop volumineux (max 5MB)', 'error');
+      input.value = '';
+      return;
+    }
+    
+    // Vérifier le type de fichier
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showNotification('Type de fichier non supporté (JPG, PNG, GIF, WebP uniquement)', 'error');
+      input.value = '';
+      return;
+    }
+    
     const reader = new FileReader();
     reader.onload = function(e) {
       const preview = document.getElementById('avatarPreview');
@@ -468,8 +489,9 @@ function previewAvatar(input) {
         img.id = 'avatarPreview';
         preview.parentNode.replaceChild(img, preview);
       }
+      showNotification('Image sélectionnée, cliquez sur "Sauvegarder" pour l\'enregistrer', 'info');
     };
-    reader.readAsDataURL(input.files[0]);
+    reader.readAsDataURL(file);
   }
 }
 

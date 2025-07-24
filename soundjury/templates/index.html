@@ -93,6 +93,9 @@
     border: 1px solid rgba(255,255,255,0.1);
     position: relative;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
   }
   
   .track:hover {
@@ -127,22 +130,30 @@
   
   .track-details .detail-item {
     display: grid;
-    grid-template-columns: 120px 1fr;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    align-items: center;
+    grid-template-columns: 140px 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: flex-start;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .track-details .detail-item:last-child {
+    border-bottom: none;
   }
   
   .track-details .detail-label {
     font-weight: 600;
-    color: var(--fg);
+    color: var(--accent);
     font-size: 0.95rem;
+    text-align: left;
   }
   
   .track-details .detail-value {
     color: var(--fg);
-    opacity: 0.8;
+    opacity: 0.9;
     font-size: 0.95rem;
+    line-height: 1.4;
   }
   
   .audio-preview {
@@ -211,9 +222,11 @@
   
   .track-content {
     display: flex;
-    gap: 1rem;
-    align-items: center;
+    gap: 1.5rem;
+    align-items: flex-start;
     margin-bottom: 1rem;
+    min-height: 80px;
+    flex: 1;
   }
   
   .track-content img {
@@ -221,57 +234,86 @@
     height: 80px;
     border-radius: 12px;
     object-fit: cover;
+    flex-shrink: 0;
+  }
+  
+  .track-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 80px;
   }
   
   .track-info h2 {
     font-size: 1.2rem;
     color: var(--fg);
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+    font-weight: 600;
   }
   
   .track-info p {
     color: var(--accent);
     font-weight: 500;
-    margin: 0;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.2;
+    font-size: 1rem;
   }
   
   .rating {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin: 1rem 0;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: auto;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(0,255,204,0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(0,255,204,0.1);
+    min-height: 50px;
   }
   
   .stars {
     display: flex;
-    gap: 2px;
+    gap: 4px;
+    align-items: center;
   }
   
   .star {
     color: #ddd;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: all 0.2s ease;
+    user-select: none;
   }
   
   .star.active, .star:hover {
     color: #ffd700;
+    transform: scale(1.1);
   }
   
   .rating-info {
     font-size: 0.9rem;
     color: var(--fg);
-    opacity: 0.7;
+    opacity: 0.8;
+    text-align: right;
+    white-space: nowrap;
   }
   
   .links {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    margin-top: 0;
+    padding-top: 0.5rem;
   }
   
   .links a {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 20px;
     text-decoration: none;
     font-size: 0.9rem;
@@ -280,6 +322,9 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 100px;
+    justify-content: center;
+    text-align: center;
   }
   
   .links a[href*="spotify"] {
@@ -349,42 +394,79 @@
     }
     
     .track-content {
-      flex-direction: column;
-      text-align: center;
+      flex-direction: row;
+      align-items: flex-start;
+      text-align: left;
+      gap: 1rem;
     }
     
     .track-content img {
-      width: 100px;
-      height: 100px;
+      width: 60px;
+      height: 60px;
+    }
+    
+    .track-info {
+      min-height: 60px;
     }
     
     .track {
       padding: 1rem;
+      min-height: 240px;
     }
     
     .track.expanded {
       padding: 1.5rem;
+      min-height: auto;
     }
     
     .rating {
       flex-direction: column;
-      gap: 0.5rem;
-      align-items: center;
+      gap: 0.75rem;
+      align-items: stretch;
+      text-align: center;
+      margin-top: auto;
+      margin-bottom: 1rem;
+      min-height: 60px;
+    }
+    
+    .rating-info {
+      text-align: center;
+    }
+    
+    .stars {
+      justify-content: center;
     }
     
     .track-details .detail-item {
       grid-template-columns: 1fr;
       gap: 0.25rem;
-      text-align: center;
+      text-align: left;
+      padding: 0.75rem 0;
     }
     
     .track-details .detail-label {
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .track-details .detail-value {
       font-size: 0.9rem;
     }
     
     .expand-indicator {
       top: 0.5rem;
       right: 0.5rem;
+    }
+    
+    .links {
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .links a {
+      min-width: 80px;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.8rem;
     }
   }
 </style>
@@ -437,8 +519,9 @@
           <i class="fas fa-chevron-down"></i>
         </div>
         
+        <!-- Contenu principal de la carte -->
         <div class="track-content">
-          <img src="{{ track.image or 'https://via.placeholder.com/80x80/00D4AA/ffffff?text=♪' }}" alt="{{ track.title }}">
+          <img src="{{ track.image_url or 'https://via.placeholder.com/80x80/00D4AA/ffffff?text=♪' }}" alt="{{ track.title }}">
           <div class="track-info">
             <h2>{{ track.title }}</h2>
             <p>{{ track.artist }}</p>
@@ -448,7 +531,7 @@
           </div>
         </div>
         
-        <!-- Système de notation -->
+        <!-- Système de notation (toujours à la même position) -->
         {% if current_user.is_authenticated %}
         <div class="rating">
           <div class="stars" data-track-id="{{ track.id }}" data-artist="{{ track.artist }}" data-title="{{ track.title }}">
@@ -465,6 +548,25 @@
           </div>
         </div>
         {% endif %}
+        
+        <!-- Liens vers les plateformes (position fixe en bas) -->
+        <div class="links">
+          {% if track.deezer_url %}
+          <a href="{{ track.deezer_url }}" target="_blank">
+            <i class="fab fa-deezer"></i> Deezer
+          </a>
+          {% endif %}
+          {% if track.youtube_url %}
+          <a href="{{ track.youtube_url }}" target="_blank">
+            <i class="fab fa-youtube"></i> YouTube
+          </a>
+          {% endif %}
+          {% if track.spotify_url %}
+          <a href="{{ track.spotify_url }}" target="_blank">
+            <i class="fab fa-spotify"></i> Spotify
+          </a>
+          {% endif %}
+        </div>
         
         <!-- Détails du morceau (cachés par défaut) -->
         <div class="track-details">
@@ -510,25 +612,6 @@
               Aucun extrait audio disponible
             </div>
           </div>
-          {% endif %}
-        </div>
-        
-        <!-- Liens vers les plateformes -->
-        <div class="links">
-          {% if track.deezer_url %}
-          <a href="{{ track.deezer_url }}" target="_blank">
-            <i class="fab fa-deezer"></i> Deezer
-          </a>
-          {% endif %}
-          {% if track.youtube_url %}
-          <a href="{{ track.youtube_url }}" target="_blank">
-            <i class="fab fa-youtube"></i> YouTube
-          </a>
-          {% endif %}
-          {% if track.spotify_url %}
-          <a href="{{ track.spotify_url }}" target="_blank">
-            <i class="fab fa-spotify"></i> Spotify
-          </a>
           {% endif %}
         </div>
       </div>
